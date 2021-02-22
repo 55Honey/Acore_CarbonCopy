@@ -8,11 +8,12 @@
 -- requires ElunaLua module
 
 ------------------------------------------------------------------------------------------------
--- USAGE:   - create a new character with same class/race as the one to copy in the same account
---          - log in with the source character
---          - .carboncopy newToonsName
+-- ADMIN GUIDE:  -  adjust config
+--               -  grant account related tickets in the `carboncopy` table
+-- PLAYER USAGE: 1) create a new character with same class/race as the one to copy in the same account. Do NOT log it Pin
+--               2) log in with the source character
+--               3) .carboncopy newToonsName
 ------------------------------------------------------------------------------------------------
-
 
 local Config = {};
 
@@ -72,13 +73,18 @@ local function CopyCharacter(event, player, command)
             return false
         end
 
+        local Data_SQL = CharDBQuery('SELECT `guid` FROM `characters` WHERE `name` = '..targetName..' LIMIT 1;');
+        local targetGUID = Data_SQL:GetUInt32(0)
+        Data_SQL = nil
+
+
         --check for target character to be same class/race
         local Data_SQL = CharDBQuery('SELECT `race`, `class` FROM `characters` WHERE `guid` = '..playerGUID..' LIMIT 1;');
         local sourceRace = Data_SQL:GetUInt32(0)
         local sourceClass = Data_SQL:GetUInt32(1)
         Data_SQL = nil
 
-        local Data_SQL = CharDBQuery('SELECT `race`, `class` FROM `characters` WHERE `name` = '..targetName..' LIMIT 1;');
+        local Data_SQL = CharDBQuery('SELECT `race`, `class` FROM `characters` WHERE `guid` = '..targetGUID..' LIMIT 1;');
         local targetRace = Data_SQL:GetUInt32(0)
         local targetClass = Data_SQL:GetUInt32(1)
         Data_SQL = nil
@@ -92,20 +98,53 @@ local function CopyCharacter(event, player, command)
             return false
         end
 
+        -- TODO: Check for character not be logged in for once
 
+        -- Copy characters table
         local QueryString = 'UPDATE `characters` AS t1'
         QueryString = QueryString..'INNER JOIN `character` AS t2 ON t2.guid = '..playerGUID..' '
         QueryString = QueryString..'SET t1.level = t2.level, t1.xp = t2.xp, t1.taximask = t2.taximask, t1.totaltime = t2.totaltime,'
         QueryString = QueryString..'t1.leveltime = t2.leveltime, t1.stable_slots = t2.stable_slots, t1.health = t2.health, '
         QueryString = QueryString..'t1.power1 = t2.power1, t1.power2 = t2.power2, t1.power3 = t2.power3, t1.power4 = t2.power4, '
         QueryString = QueryString..'t1.power5 = t2.power5, t1.power6 = t2.power6, t1.power7 = t2.power7, t1.talentGroupsCount = t2.talentGroupsCount, '
-        QueryString = QueryString..'t1.exploredZones = t2.exploredZones` WHERE t1.name = `'..targetName..'`;'
+        QueryString = QueryString..'t1.exploredZones = t2.exploredZones` WHERE t1.guid = `'..targetGUID..'`;'
 
         local Data_SQL = CharDBQuery(QueryString);
         QueryString = nil
         Data_SQL = nil
 
+        -- Copy character_homebind
+        QueryString = 'UPDATE `character_homebind` AS t1 INNER JOIN `characters_homebind` AS t2 ON t2.guid = '..playerGUID..' '
+        QueryString = QueryString..'SET t1.mapId = t2.mapId, t1.zoneId = t2.zoneId, t1.posX = t2.posX, t1.posY = t2.posY, t1.posZ = t2.posZ'
+        QueryString = QueryString..'WHERE t1.guid = `'..targetGUID..'`;'
+        local Data_SQL = CharDBQuery(QueryString);
+        QueryString = nil
+        Data_SQL = nil
 
+        -- Copy character_pet
+        local Data_SQL = CharDBQuery('SELECT MAX`id` FROM `character_pet`;');
+        local petId = Data_SQL:GetUInt32(0) + 1
+        Data_SQL = nil
+
+        QueryString = 'INSERT INTO `character_pet` (id, entry, owner, modelid, CreatedBySpell, PetType, level, exp, ReactState,'
+        QueryString = QueryString..' name, renamed, slot, curhealth, curmana, curhappiness, savetime, abdata)'
+        QueryString = QueryString..' SELECT '..petId..', entry, '..targetGUID..', modelid, CreatedBySpell, PetType, level, exp, ReactState,'
+        QueryString = QueryString..' name, renamed, slot, curhealth, curmana, curhappiness, savetime, abdata)'
+        local Data_SQL = CharDBQuery(QueryString);
+        QueryString = nil
+        Data_SQL = nil
+
+        --Copy finished quests
+        local Data_SQL = CharDBQuery('SELECT * INTO #tempQuest FROM character_queststatus WHERE guid = '..playerGUID..',');
+        local Data_SQL = CharDBQuery('UPDATE #tempQuest SET guid = '..targetGUID..'WHERE guid = '..playerGUID..',')
+        local Data_SQL = CharDBQuery('INSERT INTO character_queststatus SELECT * FROM #tempQuest;')
+        local Data_SQL = CharDBQuery('DROP TABLE #tempQuest;')
+        QueryString = nil
+        Data_SQL = nil
+
+
+        -- Todo: Read the players equipped items and send them by mail
+        -- Todo: also read: talents+glyphs. Do not copy gold, also ignore bags and items in bags including bagpack.
 
 
         print("The player with GUID "..playerGUID.." has succesfully used the .carboncopy command. ");
@@ -117,8 +156,7 @@ end
 
 --Todo: Register a command to let staff add CarbonCopy tickets (And/or offer it as a shop service, increasing tickets by 1 for X amount of points)
 
--- Todo: Read the players equipped items and duplicate them. Make the new toon owner.
-   -- Todo: also read: talents, glyphs, achievements and queststates. Do not copy gold in the saved data. Also ignore bags and items in bags including bagpack.
+
 
 
 
@@ -137,3 +175,5 @@ end
 local PLAYER_EVENT_ON_COMMAND = 42
 -- function to be called when the command hook fires
 RegisterPlayerEvent(PLAYER_EVENT_ON_COMMAND, CopyCharacter)
+
+-- Todo: Copy character_action
