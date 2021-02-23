@@ -8,21 +8,23 @@
 -- requires ElunaLua module
 
 ------------------------------------------------------------------------------------------------
--- ADMIN GUIDE:  -  adjust config
+-- ADMIN GUIDE:  -  compile the core with ElunaLua module
+--               -  adjust config in this file
+--               -  add this script to ../lua_scripts/
 --               -  grant account related tickets in the `carboncopy` table
--- PLAYER USAGE: 1) create a new character with same class/race as the one to copy in the same account. Do NOT log it Pin
+-- PLAYER USAGE: 1) create a new character with same class/race as the one to copy in the same account. Do NOT log it in
 --               2) log in with the source character
 --               3) .carboncopy newToonsName
 ------------------------------------------------------------------------------------------------
 
 local Config = {};
 
--- Name of Eluna dB
+-- Name of Eluna dB scheme
 Config.customDbName = 'ac_eluna';
 -- Min GM Level to use the .carboncopy command. Set to 0 for all players.
 Config.minGMRankForCopy = 2;
 -- Min GM Level to add tickets to an account.
-Config.minGMRankForTickets = 3;
+--Config.minGMRankForTickets = 3;
 -- Max number of characters per account
 Config.maxCharacters = 10;
 
@@ -33,7 +35,7 @@ Config.maxCharacters = 10;
 
 -- If module runs for the first time, create the db specified in Config.dbName and add the "carboncopy" table to it.
 CharDBQuery('CREATE DATABASE IF NOT EXISTS `'..Config.customDbName..'`;');
-CharDBQuery('CREATE TABLE IF NOT EXISTS `'..Config.customDbName..'`.`carboncopy` (`account_id` INT(11) NOT NULL, `tickets` INT(11) DEFAULT 0, PRIMARY KEY (`account_id`) );');
+CharDBQuery('CREATE TABLE IF NOT EXISTS `'..Config.customDbName..'`.`carboncopy` (`account_id` INT(11) NOT NULL, `tickets` INT(11) DEFAULT 0, `allow_copy_from_id` INT(11) DEFAULT 0, PRIMARY KEY (`account_id`) );');
 
 
 
@@ -108,13 +110,12 @@ local function CopyCharacter(event, player, command)
         QueryString = QueryString..'t1.power1 = t2.power1, t1.power2 = t2.power2, t1.power3 = t2.power3, t1.power4 = t2.power4, '
         QueryString = QueryString..'t1.power5 = t2.power5, t1.power6 = t2.power6, t1.power7 = t2.power7, t1.talentGroupsCount = t2.talentGroupsCount, '
         QueryString = QueryString..'t1.exploredZones = t2.exploredZones` WHERE t1.guid = `'..targetGUID..'`;'
-
         local Data_SQL = CharDBQuery(QueryString);
         QueryString = nil
         Data_SQL = nil
 
         -- Copy character_homebind
-        QueryString = 'UPDATE `character_homebind` AS t1 INNER JOIN `characters_homebind` AS t2 ON t2.guid = '..playerGUID..' '
+        QueryString = 'UPDATE character_homebind AS t1 INNER JOIN characters_homebind AS t2 ON t2.guid = '..playerGUID..' '
         QueryString = QueryString..'SET t1.mapId = t2.mapId, t1.zoneId = t2.zoneId, t1.posX = t2.posX, t1.posY = t2.posY, t1.posZ = t2.posZ'
         QueryString = QueryString..'WHERE t1.guid = `'..targetGUID..'`;'
         local Data_SQL = CharDBQuery(QueryString);
@@ -122,29 +123,80 @@ local function CopyCharacter(event, player, command)
         Data_SQL = nil
 
         -- Copy character_pet
-        local Data_SQL = CharDBQuery('SELECT MAX`id` FROM `character_pet`;');
-        local petId = Data_SQL:GetUInt32(0) + 1
+        local Data_SQL = CharDBQuery('SELECT MAX(id) FROM character_pet;');
+        local targetPetId = Data_SQL:GetUInt32(0) + 1
         Data_SQL = nil
 
-        QueryString = 'INSERT INTO `character_pet` (id, entry, owner, modelid, CreatedBySpell, PetType, level, exp, ReactState,'
-        QueryString = QueryString..' name, renamed, slot, curhealth, curmana, curhappiness, savetime, abdata)'
-        QueryString = QueryString..' SELECT '..petId..', entry, '..targetGUID..', modelid, CreatedBySpell, PetType, level, exp, ReactState,'
-        QueryString = QueryString..' name, renamed, slot, curhealth, curmana, curhappiness, savetime, abdata)'
-        local Data_SQL = CharDBQuery(QueryString);
+        local Data_SQL = CharDBQuery('SELECT id FROM character_pet WHERE owner = '..playerGUID..';');
+        local playerPetId = Data_SQL:GetUInt32(0) + 1
+        Data_SQL = nil
+
+        QueryString = 'CREATE TEMPORARY TABLE tempPet LIKE character_pet; INSERT INTO tempPet '
+        QueryString = QueryString..'SELECT * FROM character_pet WHERE owner = '..playerGUID..'; UPDATE tempPet SET id = '..targetPetId..' '
+        QueryString = QueryString..'WHERE owner = '..playerGUID..'; UPDATE tempPet SET owner = '..targetGUID..' WHERE owner = '..playerGUID..';'
+        QueryString = QueryString..'INSERT INTO character_pet SELECT * FROM tempPet; DROP TABLE tempPet;'
+        local Data_SQL = CharDBQuery(QueryString)
+        QueryString = nil
+        Data_SQL = nil
+
+        QueryString = 'CREATE TEMPORARY TABLE tempPet_spell LIKE pet_spell; INSERT INTO tempPet_spell '
+        QueryString = QueryString..'SELECT * FROM pet_spell WHERE guid = '..playerPetId..'; UPDATE tempPet_spell SET guid = '..targetPetId..' '
+        QueryString = QueryString..'WHERE guid = '..playerPetId..'; INSERT INTO pet_spell SELECT * FROM tempPet_spell; DROP TABLE tempPet_spell;'
+        local Data_SQL = CharDBQuery(QueryString)
         QueryString = nil
         Data_SQL = nil
 
         --Copy finished quests
-        local Data_SQL = CharDBQuery('SELECT * INTO #tempQuest FROM character_queststatus WHERE guid = '..playerGUID..',');
-        local Data_SQL = CharDBQuery('UPDATE #tempQuest SET guid = '..targetGUID..'WHERE guid = '..playerGUID..',')
-        local Data_SQL = CharDBQuery('INSERT INTO character_queststatus SELECT * FROM #tempQuest;')
-        local Data_SQL = CharDBQuery('DROP TABLE #tempQuest;')
+        QueryString = 'CREATE TEMPORARY TABLE tempQuest LIKE character_queststatus; INSERT INTO tempQuest '
+        QueryString = QueryString..'SELECT * FROM character_queststatus WHERE guid = '..playerGUID..'; UPDATE tempQuest SET guid = '..targetGUID..' '
+        QueryString = QueryString..'WHERE guid = '..playerGUID..'; INSERT INTO character_queststatus SELECT * FROM tempQuest; DROP TABLE tempQuest;'
+        local Data_SQL = CharDBQuery(QueryString)
         QueryString = nil
         Data_SQL = nil
 
+        --Copy reputation
+        QueryString = 'CREATE TEMPORARY TABLE tempReputation LIKE character_reputation; INSERT INTO tempReputation '
+        QueryString = QueryString..'SELECT * FROM character_reputation WHERE guid = '..playerGUID..'; UPDATE tempReputation SET guid = '..targetGUID..' '
+        QueryString = QueryString..'WHERE guid = '..playerGUID..'; INSERT INTO character_reputation SELECT * FROM tempReputation; DROP TABLE tempReputation;'
+        local Data_SQL = CharDBQuery(QueryString)
+        QueryString = nil
+        Data_SQL = nil
 
+        --Copy skills
+        QueryString = 'CREATE TEMPORARY TABLE tempSkills LIKE character_skills; INSERT INTO tempSkills '
+        QueryString = QueryString..'SELECT * FROM character_skills WHERE guid = '..playerGUID..'; UPDATE tempSkills SET guid = '..targetGUID..' '
+        QueryString = QueryString..'WHERE guid = '..playerGUID..'; INSERT INTO character_skills SELECT * FROM tempSkills; DROP TABLE tempSkills;'
+        local Data_SQL = CharDBQuery(QueryString)
+        QueryString = nil
+        Data_SQL = nil
+
+        --Copy spells
+        QueryString = 'CREATE TEMPORARY TABLE tempSpell LIKE character_spell; INSERT INTO tempSpell '
+        QueryString = QueryString..'SELECT * FROM character_spell WHERE guid = '..playerGUID..'; UPDATE tempSpell SET guid = '..targetGUID..' '
+        QueryString = QueryString..'WHERE guid = '..playerGUID..'; INSERT INTO character_spell SELECT * FROM tempSpell; DROP TABLE tempSpell;'
+        local Data_SQL = CharDBQuery(QueryString)
+        QueryString = nil
+        Data_SQL = nil
+
+        --Copy talents
+        QueryString = 'CREATE TEMPORARY TABLE tempTalent LIKE character_talent; INSERT INTO tempTalent '
+        QueryString = QueryString..'SELECT * FROM character_talent WHERE guid = '..playerGUID..'; UPDATE tempTalent SET guid = '..targetGUID..' '
+        QueryString = QueryString..'WHERE guid = '..playerGUID..'; INSERT INTO character_talent SELECT * FROM tempTalent; DROP TABLE tempTalent;'
+        local Data_SQL = CharDBQuery(QueryString)
+        QueryString = nil
+        Data_SQL = nil
+
+        --Copy glyphs
+        QueryString = 'CREATE TEMPORARY TABLE tempGlyphs LIKE character_glyphs; INSERT INTO tempGlyphs '
+        QueryString = QueryString..'SELECT * FROM character_glyphs WHERE guid = '..playerGUID..'; UPDATE tempGlyphs SET guid = '..targetGUID..' '
+        QueryString = QueryString..'WHERE guid = '..playerGUID..'; INSERT INTO character_glyphs SELECT * FROM tempGlyphs; DROP TABLE tempGlyphs;'
+        local Data_SQL = CharDBQuery(QueryString)
+        QueryString = nil
+        Data_SQL = nil
+
+        -- Todo: Copy character_action
         -- Todo: Read the players equipped items and send them by mail
-        -- Todo: also read: talents+glyphs. Do not copy gold, also ignore bags and items in bags including bagpack.
+        -- Todo: Do not copy gold, also ignore bags and items in bags including bagpack.
 
 
         print("The player with GUID "..playerGUID.." has succesfully used the .carboncopy command. ");
@@ -160,7 +212,7 @@ end
 
 
 
-function cc_splitString(inputstr, seperator)
+local function cc_splitString(inputstr, seperator)
     if seperator == nil then
         seperator = "%s"
     end
@@ -176,4 +228,4 @@ local PLAYER_EVENT_ON_COMMAND = 42
 -- function to be called when the command hook fires
 RegisterPlayerEvent(PLAYER_EVENT_ON_COMMAND, CopyCharacter)
 
--- Todo: Copy character_action
+
