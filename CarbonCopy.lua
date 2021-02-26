@@ -228,8 +228,8 @@ local function CopyCharacter(event, player, command)
         QueryString = QueryString..'SELECT * FROM character_inventory WHERE guid = '..playerGUID..' AND slot <= 18 LIMIT 19;'
         QueryString = QueryString..'UPDATE tempItems SET owner_guid = '..targetGUID..' WHERE guid = '..playerGUID..';'
         QueryString = QueryString..'SET @cc_rn = 0; UPDATE tempItems SET guid = (@cc_rn := @cc_rn + 1) WHERE owner_guid = '..targetGUID..'; '
-        QueryString = QueryString..'ORDER BY guid; UPDATE tempItems SET guid = guid + [SELECT MAX(guid) FROM item_instance] WHERE owner_guid = '..targetGUID..'; '
-        QueryString = QueryString..'INSERT INTO item_instance SELECT * FROM tempItems;'
+        QueryString = QueryString..'ORDER BY guid; SET @cc_maxguid = (SELECT MAX(guid) FROM item_instance); UPDATE tempItems SET guid = '
+        QueryString = QueryString..'guid + @cc_maxguid WHERE owner_guid = '..targetGUID..'; INSERT INTO item_instance SELECT * FROM tempItems;'
         local Data_SQL = CharDBQuery(QueryString)
 
         QueryString = nil
