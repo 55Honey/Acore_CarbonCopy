@@ -23,10 +23,12 @@ local Config = {};
 Config.customDbName = 'ac_eluna';
 -- Min GM Level to use the .carboncopy command. Set to 0 for all players.
 Config.minGMRankForCopy = 2;
--- Min GM Level to add tickets to an account.
+-- Min GM Level to add tickets to an account. (currently unused)
 --Config.minGMRankForTickets = 3;
 -- Max number of characters per account
 Config.maxCharacters = 10;
+--
+Config.mailText = ", here you are your gear. Have fun with the new twink! - Sincerely, the team of ChromieCraft!"
 
 
 ------------------------------------------
@@ -101,6 +103,10 @@ local function CopyCharacter(event, player, command)
         end
 
         -- TODO: Check for character not be logged in for once
+        --deduct one ticket
+        local Data_SQL = CharDBQuery('UPDATE '..Config.customDbName..'`.`carboncopy` SET tickets = tickets -1 WHERE `account_id` = '..accountId..';');
+        Data_SQL = nil
+
         local QueryString
         -- Copy characters table
         QueryString = 'UPDATE `characters` AS t1'
@@ -211,23 +217,35 @@ local function CopyCharacter(event, player, command)
         QueryString = nil
         Data_SQL = nil
 
-
-
         --Copy items
-        --/ TOTALLY BROKEN, requires FULL REWRITE
+        local QueryString = 'DELETE * FROM item_instance WHERE owner_guid = '..targetGUID..'; '
+        QueryString = QueryString..'DELETE * FROM character_inventory WHERE guid = '..targetGUID..';'
+        local Data_SQL = CharDBQuery(QueryString)
+        QueryString = nil
+        Data_SQL = nil
+
         local QueryString = 'CREATE TEMPORARY TABLE tempItems LIKE item_instance; INSERT INTO tempItems '
         QueryString = QueryString..'SELECT * FROM character_inventory WHERE guid = '..playerGUID..' AND slot <= 18 LIMIT 19;'
         QueryString = QueryString..'UPDATE tempItems SET owner_guid = '..targetGUID..' WHERE guid = '..playerGUID..';'
-        QueryString = QueryString..'SET @rn = 0; UPDATE tempItems SET guid = (@rn := @rn + 1) WHERE owner_guid = '..targetGUID..'; '
-        QueryString = QueryString..'ORDER BY guid;'
+        QueryString = QueryString..'SET @cc_rn = 0; UPDATE tempItems SET guid = (@cc_rn := @cc_rn + 1) WHERE owner_guid = '..targetGUID..'; '
+        QueryString = QueryString..'ORDER BY guid; UPDATE tempItems SET guid = guid + [SELECT MAX(guid) FROM item_instance] WHERE owner_guid = '..targetGUID..'; '
+        QueryString = QueryString..'INSERT INTO item_instance SELECT * FROM tempItems;'
         local Data_SQL = CharDBQuery(QueryString)
 
         QueryString = nil
         Data_SQL = nil
 
-        --Todo: delete starter gear from new character
-        --Todo: place items in new characters bags/mail
-
+        local item_guid
+        local ItemCounter = 1
+        local Data_SQL = CharDBQuery('SELECT guid FROM tempItems')
+        repeat
+            item_guid = Data_SQL:GetUInt32(0)
+            SendMail("Copied items", "Hello "..targetName..Config.mailText, targetGUID, 0, 61, 0, 0, 0, 1652, 1)
+            ItemCounter = ItemCounter + 1
+        until not Data_SQL:NextRow()
+        item_guid = nil
+        Data_SQL = nil
+        ItemCounter = nil
 
         print("The player with GUID "..playerGUID.." has succesfully used the .carboncopy command. ");
         player:SendBroadcastMessage("Character copied.")
