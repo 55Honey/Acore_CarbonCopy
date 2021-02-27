@@ -18,6 +18,7 @@
 ------------------------------------------------------------------------------------------------
 
 local Config = {};
+local cc_maps = {};
 
 -- Name of Eluna dB scheme
 Config.customDbName = 'ac_eluna';
@@ -27,8 +28,19 @@ Config.minGMRankForCopy = 2;
 --Config.minGMRankForTickets = 3;
 -- Max number of characters per account
 Config.maxCharacters = 10;
---
+-- This text is added to the mail which the new character receives alongside their copied items
 Config.mailText = ", here you are your gear. Have fun with the new twink! - Sincerely, the team of ChromieCraft!"
+
+-- The maps below specify legal locations to sue the .copycharacter command.
+-- This is used to prevent dungeon specific gear to be copied e.g. the legendaries from the Kael'thas encounter.
+-- Eastern kingdoms
+table.insert(cc_maps, 0)
+-- Kalimdor
+table.insert(cc_maps, 1)
+-- Outland
+table.insert(cc_maps, 530)
+-- Northrend
+table.insert(cc_maps, 571)
 
 
 ------------------------------------------
@@ -43,9 +55,6 @@ CharDBQuery('CREATE TABLE IF NOT EXISTS `'..Config.customDbName..'`.`carboncopy`
 
 local function CopyCharacter(event, player, command)
     local commandArray = cc_splitString(command)
-    --for n,_ in pairs(commandArray) do
-    --    print(n.."a: "..commandArray[n])
-    --end
     if commandArray[1] == "carboncopy" then
 		-- make sure the player is properly ranked
         if player:GetGMRank() < Config.minGMRankForCopy then
@@ -55,13 +64,11 @@ local function CopyCharacter(event, player, command)
 
         --check for available tickets
         local accountId = player:GetAccountId()
-        --print("1: "..accountId)
         local Data_SQL = CharDBQuery('SELECT `tickets` FROM `'..Config.customDbName..'`.`carboncopy` WHERE `account_id` = '..accountId..';');
         local availableTickets = Data_SQL:GetUInt32(0)
-        --print("2: "..availableTickets)
         Data_SQL = nil
         if availableTickets ~= nil and availableTickets <= 0 then
-            player:SendBroadcastMessage("You do not have enough Carbon Copy tickets to execute this command.")
+            player:SendBroadcastMessage("You do not have enough Carbon Copy tickets to execute this command. Aborting.")
 			cc_resetVariables()
             return false
         end
@@ -76,7 +83,7 @@ local function CopyCharacter(event, player, command)
         local targetAccountId = Data_SQL:GetUInt32(0)
         Data_SQL = nil
         if targetAccountId ~= accountId then
-            player:SendBroadcastMessage("The requested character is not on the same account.")
+            player:SendBroadcastMessage("The requested character is not on the same account. Aborting.")
 			cc_resetVariables()
             return false
         end
@@ -85,7 +92,7 @@ local function CopyCharacter(event, player, command)
         if Data_SQL ~= nil then
 			targetGUID = Data_SQL:GetUInt32(0)
 		else
-			player:SendBroadcastMessage("Name not found. Check capitalization and spelling.")
+			player:SendBroadcastMessage("Name not found. Check capitalization and spelling. Aborting.")
 			cc_resetVariables()
 			return false
 		end
@@ -104,17 +111,38 @@ local function CopyCharacter(event, player, command)
         Data_SQL = nil
 
         if sourceRace ~= targetRace then
-            player:SendBroadcastMessage("The requested character is not the same race as this character.")
+            player:SendBroadcastMessage("The requested character is not the same race as this character. Aborting.")
 			cc_resetVariables()
             return false
         end
         if sourceClass ~= targetClass then
-            player:SendBroadcastMessage("The requested character is not the same class as this character.")
+            player:SendBroadcastMessage("The requested character is not the same class as this character. Aborting.")
 			cc_resetVariables()
             return false
         end
+		
+		-- check if target character wasn't logged in
+		local cinematic
+		local Data_SQL = CharDBQuery('SELECT cinematic FROM characters WHERE guid = '..targetGUID..';');
+        if Data_SQL ~= nil then
+			cinematic = Data_SQL:GetUInt16(0)
+			if cinematic == 1 then
+				player:SendBroadcastMessage("The requested character has been logged in already. Aborting.")
+			cinematic = nil
+			end
+		else
+			print("Unhandled exception in CarbonCopy. Could not read characters.cinematic from playerGuid "..targetGUID..".")
+		end
+		
+		-- check source characters location
+		local cc_mapId
+		cc_mapId = player:GetMapId()
+		if not has_value(cc_maps, cc_mapId) then
+			player:SendBroadcastMessage("You are not in an allowed map. Try again outside/not in a dungeon.")
+			cc_resetVariables()
+			return false
+		end
 
-        -- TODO: Check for character not be logged in for once
         --deduct one ticket
         local Data_SQL = CharDBQuery('UPDATE `'..Config.customDbName..'`.`carboncopy` SET tickets = tickets -1 WHERE `account_id` = '..accountId..';');
         Data_SQL = nil
@@ -297,6 +325,15 @@ function cc_splitString(inputstr, seperator)
         table.insert(t, str)
     end
     return t
+end
+
+local function has_value (tab, val)
+    for index, value in ipairs(tab) do
+        if value == val then
+            return true
+        end
+    end
+    return false
 end
 
 local PLAYER_EVENT_ON_COMMAND = 42
