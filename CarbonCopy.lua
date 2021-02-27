@@ -47,9 +47,10 @@ local function CopyCharacter(event, player, command)
     --    print(n.."a: "..commandArray[n])
     --end
     if commandArray[1] == "carboncopy" then
-        -- make sure the player is properly ranked
+		-- make sure the player is properly ranked
         if player:GetGMRank() < Config.minGMRankForCopy then
-            return false
+            cc_resetVariables()
+			return false
         end
 
         --check for available tickets
@@ -61,6 +62,7 @@ local function CopyCharacter(event, player, command)
         Data_SQL = nil
         if availableTickets ~= nil and availableTickets <= 0 then
             player:SendBroadcastMessage("You do not have enough Carbon Copy tickets to execute this command.")
+			cc_resetVariables()
             return false
         end
 
@@ -68,199 +70,225 @@ local function CopyCharacter(event, player, command)
         local playerGUID = tostring(player:GetGUID())
         playerGUID = tonumber(playerGUID)
         --print("3: "..playerGUID)
+		local targetGUID
         local targetName = commandArray[2]
         local Data_SQL = CharDBQuery('SELECT `account` FROM `characters` WHERE `guid` = '..playerGUID..' LIMIT 1;');
         local targetAccountId = Data_SQL:GetUInt32(0)
         Data_SQL = nil
         if targetAccountId ~= accountId then
             player:SendBroadcastMessage("The requested character is not on the same account.")
+			cc_resetVariables()
             return false
         end
 
-        local Data_SQL = CharDBQuery('SELECT `guid` FROM `characters` WHERE `name` = '..targetName..' LIMIT 1;');
-        local targetGUID = Data_SQL:GetUInt32(0)
+        local Data_SQL = CharDBQuery('SELECT `guid` FROM `characters` WHERE `name` = "'..targetName..'" LIMIT 1;');
+        if Data_SQL ~= nil then
+			targetGUID = Data_SQL:GetUInt32(0)
+		else
+			player:SendBroadcastMessage("Name not found. Check capitalization and spelling.")
+			cc_resetVariables()
+			return false
+		end
         Data_SQL = nil
 
 
         --check for target character to be same class/race
         local Data_SQL = CharDBQuery('SELECT `race`, `class` FROM `characters` WHERE `guid` = '..playerGUID..' LIMIT 1;');
-        local sourceRace = Data_SQL:GetUInt32(0)
-        local sourceClass = Data_SQL:GetUInt32(1)
+        local sourceRace = Data_SQL:GetUInt8(0)
+        local sourceClass = Data_SQL:GetUInt8(1)
         Data_SQL = nil
 
         local Data_SQL = CharDBQuery('SELECT `race`, `class` FROM `characters` WHERE `guid` = '..targetGUID..' LIMIT 1;');
-        local targetRace = Data_SQL:GetUInt32(0)
-        local targetClass = Data_SQL:GetUInt32(1)
+        local targetRace = Data_SQL:GetUInt8(0)
+        local targetClass = Data_SQL:GetUInt8(1)
         Data_SQL = nil
 
         if sourceRace ~= targetRace then
             player:SendBroadcastMessage("The requested character is not the same race as this character.")
+			cc_resetVariables()
             return false
         end
         if sourceClass ~= targetClass then
             player:SendBroadcastMessage("The requested character is not the same class as this character.")
+			cc_resetVariables()
             return false
         end
 
         -- TODO: Check for character not be logged in for once
         --deduct one ticket
-        local Data_SQL = CharDBQuery('UPDATE '..Config.customDbName..'`.`carboncopy` SET tickets = tickets -1 WHERE `account_id` = '..accountId..';');
+        local Data_SQL = CharDBQuery('UPDATE `'..Config.customDbName..'`.`carboncopy` SET tickets = tickets -1 WHERE `account_id` = '..accountId..';');
         Data_SQL = nil
-
+		
+		--delete TempTables
+		CharDBQuery('DROP TABLE IF EXISTS tempQuest;')
+		CharDBQuery('DROP TABLE IF EXISTS tempPet;')
+		CharDBQuery('DROP TABLE IF EXISTS tempPet_spell;')
+		CharDBQuery('DROP TABLE IF EXISTS tempReputation;')
+		CharDBQuery('DROP TABLE IF EXISTS tempSkills;')
+		CharDBQuery('DROP TABLE IF EXISTS tempSpell;')
+		CharDBQuery('DROP TABLE IF EXISTS tempTalent;')
+		CharDBQuery('DROP TABLE IF EXISTS tempGlyphs;')
+		CharDBQuery('DROP TABLE IF EXISTS tempAction;')
+		CharDBQuery('DROP TABLE IF EXISTS tempItems;')
+		
         local QueryString
         -- Copy characters table
-        QueryString = 'UPDATE `characters` AS t1'
-        QueryString = QueryString..'INNER JOIN `character` AS t2 ON t2.guid = '..playerGUID..' '
-        QueryString = QueryString..'SET t1.level = t2.level, t1.xp = t2.xp, t1.taximask = t2.taximask, t1.totaltime = t2.totaltime,'
+        QueryString = 'UPDATE `characters` AS t1 '
+        QueryString = QueryString..'INNER JOIN `characters` AS t2 ON t2.guid = '..playerGUID..' '
+        QueryString = QueryString..'SET t1.level = t2.level, t1.xp = t2.xp, t1.taximask = t2.taximask, t1.totaltime = t2.totaltime, '
         QueryString = QueryString..'t1.leveltime = t2.leveltime, t1.stable_slots = t2.stable_slots, t1.health = t2.health, '
         QueryString = QueryString..'t1.power1 = t2.power1, t1.power2 = t2.power2, t1.power3 = t2.power3, t1.power4 = t2.power4, '
         QueryString = QueryString..'t1.power5 = t2.power5, t1.power6 = t2.power6, t1.power7 = t2.power7, t1.talentGroupsCount = t2.talentGroupsCount, '
-        QueryString = QueryString..'t1.exploredZones = t2.exploredZones` WHERE t1.guid = `'..targetGUID..'`;'
+        QueryString = QueryString..'t1.exploredZones = t2.exploredZones WHERE t1.guid = '..targetGUID..';'
         local Data_SQL = CharDBQuery(QueryString);
         QueryString = nil
         Data_SQL = nil
 
         -- Copy character_homebind
-        QueryString = 'UPDATE character_homebind AS t1 INNER JOIN characters_homebind AS t2 ON t2.guid = '..playerGUID..' '
-        QueryString = QueryString..'SET t1.mapId = t2.mapId, t1.zoneId = t2.zoneId, t1.posX = t2.posX, t1.posY = t2.posY, t1.posZ = t2.posZ'
-        QueryString = QueryString..'WHERE t1.guid = `'..targetGUID..'`;'
+        QueryString = 'UPDATE character_homebind AS t1 INNER JOIN character_homebind AS t2 ON t2.guid = '..playerGUID..' '
+        QueryString = QueryString..'SET t1.mapId = t2.mapId, t1.zoneId = t2.zoneId, t1.posX = t2.posX, t1.posY = t2.posY, t1.posZ = t2.posZ '
+        QueryString = QueryString..'WHERE t1.guid = '..targetGUID..';'
         local Data_SQL = CharDBQuery(QueryString);
         QueryString = nil
         Data_SQL = nil
 
         -- Copy character_pet
         local Data_SQL = CharDBQuery('SELECT id FROM character_pet WHERE owner = '..playerGUID..';');
-        local playerPetId = Data_SQL:GetUInt32(0) + 1
-        Data_SQL = nil
+        if Data_SQL ~= nil then
+			playerPetId = Data_SQL:GetUInt32(0) + 1
+			Data_SQL = nil
 
-        local Data_SQL = CharDBQuery('SELECT MAX(id) FROM character_pet;');
-        local targetPetId = Data_SQL:GetUInt32(0) + 1
-        Data_SQL = nil
+			local Data_SQL = CharDBQuery('SELECT MAX(id) FROM character_pet;');
+			local targetPetId = Data_SQL:GetUInt32(0) + 1
+			Data_SQL = nil
 
-        local QueryString = 'DELETE * FROM character_pet WHERE owner = '..targetGUID..'; '
-        QueryString = QueryString..'CREATE TEMPORARY TABLE tempPet LIKE character_pet; INSERT INTO tempPet '
-        QueryString = QueryString..'SELECT * FROM character_pet WHERE owner = '..playerGUID..'; UPDATE tempPet SET id = '..targetPetId..' '
-        QueryString = QueryString..'WHERE owner = '..playerGUID..'; UPDATE tempPet SET owner = '..targetGUID..' WHERE owner = '..playerGUID..';'
-        QueryString = QueryString..'INSERT INTO character_pet SELECT * FROM tempPet; DROP TABLE tempPet;'
-        local Data_SQL = CharDBQuery(QueryString)
-        QueryString = nil
-        Data_SQL = nil
+			local QueryString = 'DELETE FROM character_pet WHERE owner = '..targetGUID..'; '
+			QueryString = QueryString..'CREATE TEMPORARY TABLE tempPet LIKE character_pet; INSERT INTO tempPet '
+			QueryString = QueryString..'SELECT * FROM character_pet WHERE owner = '..playerGUID..'; UPDATE tempPet SET id = '..targetPetId..' '
+			QueryString = QueryString..'WHERE owner = '..playerGUID..'; UPDATE tempPet SET owner = '..targetGUID..' WHERE owner = '..playerGUID..';'
+			QueryString = QueryString..'INSERT INTO character_pet SELECT * FROM tempPet; DROP TABLE tempPet;'
+			local Data_SQL = CharDBQuery(QueryString)
+			QueryString = nil
+			Data_SQL = nil
 
-        local QueryString = 'DELETE * FROM pet_spell WHERE guid = '..targetPetId..'; '
-        QueryString = QueryString..'CREATE TEMPORARY TABLE tempPet_spell LIKE pet_spell; INSERT INTO tempPet_spell '
-        QueryString = QueryString..'SELECT * FROM pet_spell WHERE guid = '..playerPetId..'; UPDATE tempPet_spell SET guid = '..targetPetId..' '
-        QueryString = QueryString..'WHERE guid = '..playerPetId..'; INSERT INTO pet_spell SELECT * FROM tempPet_spell; DROP TABLE tempPet_spell;'
-        local Data_SQL = CharDBQuery(QueryString)
-        QueryString = nil
-        Data_SQL = nil
-
-        --Copy finished quests
-        local QueryString = 'DELETE * FROM character_queststatus WHERE guid = '..targetGUID..'; '
-        QueryString = QueryString..'CREATE TEMPORARY TABLE tempQuest LIKE character_queststatus; INSERT INTO tempQuest '
-        QueryString = QueryString..'SELECT * FROM character_queststatus WHERE guid = '..playerGUID..'; UPDATE tempQuest SET guid = '..targetGUID..' '
-        QueryString = QueryString..'WHERE guid = '..playerGUID..'; INSERT INTO character_queststatus SELECT * FROM tempQuest; DROP TABLE tempQuest;'
-        local Data_SQL = CharDBQuery(QueryString)
-        QueryString = nil
-        Data_SQL = nil
+			local QueryString = 'DELETE FROM pet_spell WHERE guid = '..targetPetId..'; '
+			QueryString = QueryString..'CREATE TEMPORARY TABLE tempPet_spell LIKE pet_spell; INSERT INTO tempPet_spell '
+			QueryString = QueryString..'SELECT * FROM pet_spell WHERE guid = '..cc_playerPetId..'; UPDATE tempPet_spell SET guid = '..targetPetId..' '
+			QueryString = QueryString..'WHERE guid = '..cc_playerPetId..'; INSERT INTO pet_spell SELECT * FROM tempPet_spell; DROP TABLE tempPet_spell;'
+			local Data_SQL = CharDBQuery(QueryString)
+			QueryString = nil
+			Data_SQL = nil
+		end
+		
+        local Data_SQL = CharDBQuery('DELETE FROM character_queststatus WHERE guid = '..targetGUID..';')
+		local Data_SQL = CharDBQuery('CREATE TEMPORARY TABLE tempQuest LIKE character_queststatus;')
+		local Data_SQL = CharDBQuery('INSERT INTO tempQuest SELECT * FROM character_queststatus WHERE guid = '..playerGUID..';')
+		local Data_SQL = CharDBQuery('UPDATE tempQuest SET guid = '..targetGUID..' WHERE guid = '..playerGUID..';')
+		local Data_SQL = CharDBQuery('INSERT INTO character_queststatus SELECT * FROM tempQuest;')
+		local Data_SQL = CharDBQuery('DROP TABLE tempQuest;')
+		Data_SQL = nil
 
         --Copy reputation
-        local QueryString = 'DELETE * FROM character_reputation WHERE guid = '..targetGUID..'; '
-        QueryString = QueryString..'CREATE TEMPORARY TABLE tempReputation LIKE character_reputation; INSERT INTO tempReputation '
-        QueryString = QueryString..'SELECT * FROM character_reputation WHERE guid = '..playerGUID..'; UPDATE tempReputation SET guid = '..targetGUID..' '
-        QueryString = QueryString..'WHERE guid = '..playerGUID..'; INSERT INTO character_reputation SELECT * FROM tempReputation; DROP TABLE tempReputation;'
-        local Data_SQL = CharDBQuery(QueryString)
-        QueryString = nil
+		local Data_SQL = CharDBQuery('DELETE FROM character_reputation WHERE guid = '..targetGUID..';')
+		local Data_SQL = CharDBQuery('CREATE TEMPORARY TABLE tempReputation LIKE character_reputation;')
+		local Data_SQL = CharDBQuery('INSERT INTO tempReputation SELECT * FROM character_reputation WHERE guid = '..playerGUID..';')
+		local Data_SQL = CharDBQuery('UPDATE tempReputation SET guid = '..targetGUID..' WHERE guid = '..playerGUID..';')
+		local Data_SQL = CharDBQuery('INSERT INTO character_reputation SELECT * FROM tempReputation;')
+		local Data_SQL = CharDBQuery('DROP TABLE tempReputation;')
         Data_SQL = nil
 
         --Copy skills
-        local QueryString = 'DELETE * FROM character_skills WHERE guid = '..targetGUID..'; '
-        QueryString = QueryString..'CREATE TEMPORARY TABLE tempSkills LIKE character_skills; INSERT INTO tempSkills '
-        QueryString = QueryString..'SELECT * FROM character_skills WHERE guid = '..playerGUID..'; UPDATE tempSkills SET guid = '..targetGUID..' '
-        QueryString = QueryString..'WHERE guid = '..playerGUID..'; INSERT INTO character_skills SELECT * FROM tempSkills; DROP TABLE tempSkills;'
-        local Data_SQL = CharDBQuery(QueryString)
-        QueryString = nil
-        Data_SQL = nil
+        local Data_SQL = CharDBQuery('DELETE FROM character_skills WHERE guid = '..targetGUID..';')
+		local Data_SQL = CharDBQuery('CREATE TEMPORARY TABLE tempSkills LIKE character_skills;')
+		local Data_SQL = CharDBQuery('INSERT INTO tempSkills SELECT * FROM character_skills WHERE guid = '..playerGUID..';')
+		local Data_SQL = CharDBQuery('UPDATE tempSkills SET guid = '..targetGUID..' WHERE guid = '..playerGUID..';')
+		local Data_SQL = CharDBQuery('INSERT INTO character_skills SELECT * FROM tempSkills;')
+		local Data_SQL = CharDBQuery('DROP TABLE tempSkills;')
+		Data_SQL = nil
 
         --Copy spells
-        local QueryString = 'DELETE * FROM character_spell WHERE guid = '..targetGUID..'; '
-        QueryString = QueryString..'CREATE TEMPORARY TABLE tempSpell LIKE character_spell; INSERT INTO tempSpell '
-        QueryString = QueryString..'SELECT * FROM character_spell WHERE guid = '..playerGUID..'; UPDATE tempSpell SET guid = '..targetGUID..' '
-        QueryString = QueryString..'WHERE guid = '..playerGUID..'; INSERT INTO character_spell SELECT * FROM tempSpell; DROP TABLE tempSpell;'
-        local Data_SQL = CharDBQuery(QueryString)
-        QueryString = nil
-        Data_SQL = nil
+        local Data_SQL = CharDBQuery('DELETE FROM character_spell WHERE guid = '..targetGUID..';')
+		local Data_SQL = CharDBQuery('CREATE TEMPORARY TABLE tempSpell LIKE character_spell;')
+		local Data_SQL = CharDBQuery('INSERT INTO tempSpell SELECT * FROM character_spell WHERE guid = '..playerGUID..';')
+		local Data_SQL = CharDBQuery('UPDATE tempSpell SET guid = '..targetGUID..' WHERE guid = '..playerGUID..';')
+		local Data_SQL = CharDBQuery('INSERT INTO character_spell SELECT * FROM tempSpell;')
+		local Data_SQL = CharDBQuery('DROP TABLE tempSpell;')
+		Data_SQL = nil
 
         --Copy talents
-        local QueryString = 'DELETE * FROM character_talent WHERE guid = '..targetGUID..'; '
-        QueryString = QueryString..'CREATE TEMPORARY TABLE tempTalent LIKE character_talent; INSERT INTO tempTalent '
-        QueryString = QueryString..'SELECT * FROM character_talent WHERE guid = '..playerGUID..'; UPDATE tempTalent SET guid = '..targetGUID..' '
-        QueryString = QueryString..'WHERE guid = '..playerGUID..'; INSERT INTO character_talent SELECT * FROM tempTalent; DROP TABLE tempTalent;'
-        local Data_SQL = CharDBQuery(QueryString)
-        QueryString = nil
-        Data_SQL = nil
+        local Data_SQL = CharDBQuery('DELETE FROM character_talent WHERE guid = '..targetGUID..';')
+		local Data_SQL = CharDBQuery('CREATE TEMPORARY TABLE tempTalent LIKE character_talent;')
+		local Data_SQL = CharDBQuery('INSERT INTO tempTalent SELECT * FROM character_talent WHERE guid = '..playerGUID..';')
+		local Data_SQL = CharDBQuery('UPDATE tempTalent SET guid = '..targetGUID..' WHERE guid = '..playerGUID..';')
+		local Data_SQL = CharDBQuery('INSERT INTO character_talent SELECT * FROM tempTalent;')
+		local Data_SQL = CharDBQuery('DROP TABLE tempTalent;')
+		Data_SQL = nil
 
         --Copy glyphs
-        local QueryString = 'DELETE * FROM character_glyphs WHERE guid = '..targetGUID..'; '
-        QueryString = QueryString..'CREATE TEMPORARY TABLE tempGlyphs LIKE character_glyphs; INSERT INTO tempGlyphs '
-        QueryString = QueryString..'SELECT * FROM character_glyphs WHERE guid = '..playerGUID..'; UPDATE tempGlyphs SET guid = '..targetGUID..' '
-        QueryString = QueryString..'WHERE guid = '..playerGUID..'; INSERT INTO character_glyphs SELECT * FROM tempGlyphs; DROP TABLE tempGlyphs;'
-        local Data_SQL = CharDBQuery(QueryString)
-        QueryString = nil
-        Data_SQL = nil
+        local Data_SQL = CharDBQuery('DELETE FROM character_glyphs WHERE guid = '..targetGUID..';')
+		local Data_SQL = CharDBQuery('CREATE TEMPORARY TABLE tempGlyphs LIKE character_glyphs;')
+		local Data_SQL = CharDBQuery('INSERT INTO tempGlyphs SELECT * FROM character_glyphs WHERE guid = '..playerGUID..';')
+		local Data_SQL = CharDBQuery('UPDATE tempGlyphs SET guid = '..targetGUID..' WHERE guid = '..playerGUID..';')
+		local Data_SQL = CharDBQuery('INSERT INTO character_glyphs SELECT * FROM tempGlyphs;')
+		local Data_SQL = CharDBQuery('DROP TABLE tempGlyphs;')
+		Data_SQL = nil
 
         --Copy actions
-        local QueryString = 'DELETE * FROM character_action WHERE guid = '..targetGUID..'; '
-        QueryString = QueryString..'CREATE TEMPORARY TABLE tempAction LIKE character_action; INSERT INTO tempAction '
-        QueryString = QueryString..'SELECT * FROM character_action WHERE guid = '..playerGUID..'; UPDATE tempAction SET guid = '..targetGUID..' '
-        QueryString = QueryString..'WHERE guid = '..playerGUID..'; INSERT INTO character_action SELECT * FROM tempAction; DROP TABLE tempAction;'
-        local Data_SQL = CharDBQuery(QueryString)
-        QueryString = nil
-        Data_SQL = nil
+        local Data_SQL = CharDBQuery('DELETE FROM character_action WHERE guid = '..targetGUID..';')
+		local Data_SQL = CharDBQuery('CREATE TEMPORARY TABLE tempAction LIKE character_action;')
+		local Data_SQL = CharDBQuery('INSERT INTO tempAction SELECT * FROM character_action WHERE guid = '..playerGUID..';')
+		local Data_SQL = CharDBQuery('UPDATE tempAction SET guid = '..targetGUID..' WHERE guid = '..playerGUID..';')
+		local Data_SQL = CharDBQuery('INSERT INTO character_action SELECT * FROM tempAction;')
+		local Data_SQL = CharDBQuery('DROP TABLE tempAction;')
+		Data_SQL = nil
 
         --Copy items
-        local QueryString = 'DELETE * FROM item_instance WHERE owner_guid = '..targetGUID..'; '
-        QueryString = QueryString..'DELETE * FROM character_inventory WHERE guid = '..targetGUID..';'
-        local Data_SQL = CharDBQuery(QueryString)
-        QueryString = nil
+        local Data_SQL = CharDBQuery('DELETE FROM item_instance WHERE owner_guid = '..targetGUID..';')
+        local Data_SQL = CharDBQuery('DELETE FROM character_inventory WHERE guid = '..targetGUID..';')
         Data_SQL = nil
 
-        local QueryString = 'CREATE TEMPORARY TABLE tempItems LIKE item_instance; INSERT INTO tempItems '
-        QueryString = QueryString..'SELECT * FROM character_inventory WHERE guid = '..playerGUID..' AND slot <= 18 LIMIT 19;'
-        QueryString = QueryString..'UPDATE tempItems SET owner_guid = '..targetGUID..' WHERE guid = '..playerGUID..';'
-        QueryString = QueryString..'SET @cc_rn = 0; UPDATE tempItems SET guid = (@cc_rn := @cc_rn + 1) WHERE owner_guid = '..targetGUID..'; '
-        QueryString = QueryString..'ORDER BY guid; SET @cc_maxguid = (SELECT MAX(guid) FROM item_instance); UPDATE tempItems SET guid = '
-        QueryString = QueryString..'guid + @cc_maxguid WHERE owner_guid = '..targetGUID..'; INSERT INTO item_instance SELECT * FROM tempItems;'
-        local Data_SQL = CharDBQuery(QueryString)
-
-        QueryString = nil
-        Data_SQL = nil
-
-        local item_guid
-        local ItemCounter = 1
-        local Data_SQL = CharDBQuery('SELECT guid FROM tempItems')
-        repeat
-            item_guid = Data_SQL:GetUInt32(0)
-            SendMail("Copied items", "Hello "..targetName..Config.mailText, targetGUID, 0, 61, 0, 0, 0, 1652, 1)
+        local Data_SQL = CharDBQuery('SELECT item FROM character_inventory WHERE guid = '..playerGUID..' AND bag = 0 AND slot <= 18 LIMIT 18;')
+		local ItemCounter = 1
+		local item_guid
+		local item_id
+		repeat
+			item_guid = Data_SQL:GetUInt32(0)
+			print("item_guid: "..item_guid)
+            local Data_SQL2 = CharDBQuery('SELECT itemEntry FROM item_instance WHERE guid = '..item_guid..' LIMIT 1;')
+			item_id = Data_SQL2:GetUInt16(0)
+			print("item_id: "..item_id)
+			SendMail("Copied items", "Hello "..targetName..Config.mailText, targetGUID, 0, 61, 0, 0, 0, item_id, 1)
             ItemCounter = ItemCounter + 1
         until not Data_SQL:NextRow()
-        item_guid = nil
-        Data_SQL = nil
-        ItemCounter = nil
-
+		ItemCounter = nil
+		Data_SQL = nil
+		Data_SQL2 = nil
+		item_guid = nil
+		
         print("The player with GUID "..playerGUID.." has succesfully used the .carboncopy command. ");
         player:SendBroadcastMessage("Character copied.")
     end
+	cc_resetVariables()
     return false
 end
 
-
 --Todo: Register a command to let staff add CarbonCopy tickets (And/or offer it as a shop service, increasing tickets by 1 for X amount of points)
 
+function cc_resetVariables()
+	playerGUID = nil
+    item_guid = nil
+    Data_SQL = nil
+	Data_SQL2 = nil
+    ItemCounter = nil
+	targetName = nil
+	targetGUID = nil
+	QueryString = nil
+	cc_playerPetId = nil
+	cc_targetPetId = nil
+	item_id = nil
+end
 
-
-
-
-local function cc_splitString(inputstr, seperator)
+function cc_splitString(inputstr, seperator)
     if seperator == nil then
         seperator = "%s"
     end
