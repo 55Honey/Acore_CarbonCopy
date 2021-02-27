@@ -243,8 +243,11 @@ local function CopyCharacter(event, player, command)
 		Data_SQL = nil
 
         --Copy items
-        local Data_SQL = CharDBQuery('DELETE FROM item_instance WHERE owner_guid = '..targetGUID..';')
-        local Data_SQL = CharDBQuery('DELETE FROM character_inventory WHERE guid = '..targetGUID..';')
+        local homeStone
+		local Data_SQL = CharDBQuery('DELETE FROM item_instance WHERE owner_guid = '..targetGUID..' AND itemEntry != 6948;')
+		local Data_SQL = CharDBQuery('SELECT guid FROM item_instance WHERE owner_guid = '..targetGUID..' AND itemEntry = 6948 LIMIT 1;')
+		homeStone = Data_SQL:GetUInt32(0)
+        local Data_SQL = CharDBQuery('DELETE FROM character_inventory WHERE guid = '..targetGUID..' AND item != '..homeStone..';')
         Data_SQL = nil
 
         local Data_SQL = CharDBQuery('SELECT item FROM character_inventory WHERE guid = '..playerGUID..' AND bag = 0 AND slot <= 18 LIMIT 18;')
@@ -253,17 +256,13 @@ local function CopyCharacter(event, player, command)
 		local item_id
 		repeat
 			item_guid = Data_SQL:GetUInt32(0)
-			print("item_guid: "..item_guid)
+			--print("item_guid: "..item_guid)
             local Data_SQL2 = CharDBQuery('SELECT itemEntry FROM item_instance WHERE guid = '..item_guid..' LIMIT 1;')
 			item_id = Data_SQL2:GetUInt16(0)
-			print("item_id: "..item_id)
+			--print("item_id: "..item_id)
 			SendMail("Copied items", "Hello "..targetName..Config.mailText, targetGUID, 0, 61, 0, 0, 0, item_id, 1)
             ItemCounter = ItemCounter + 1
         until not Data_SQL:NextRow()
-		ItemCounter = nil
-		Data_SQL = nil
-		Data_SQL2 = nil
-		item_guid = nil
 		
         print("The player with GUID "..playerGUID.." has succesfully used the .carboncopy command. ");
         player:SendBroadcastMessage("Character copied.")
@@ -286,6 +285,7 @@ function cc_resetVariables()
 	cc_playerPetId = nil
 	cc_targetPetId = nil
 	item_id = nil
+	homeStone = nil
 end
 
 function cc_splitString(inputstr, seperator)
