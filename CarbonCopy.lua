@@ -312,7 +312,7 @@ local function CopyCharacter(event, player, command)
         until not Data_SQL:NextRow()
 		
         print("The player with GUID "..playerGUID.." has succesfully used the .carboncopy command. Target character: "..targetGUID);
-        player:SendBroadcastMessage("Character copied. You have "..availableTickets.." left.")
+        player:SendBroadcastMessage("Character copied. You have "..availableTickets.." tickets left.")
 		
 	elseif commandArray[1] == "addcctickets" then
 		-- make sure the player is properly ranked
