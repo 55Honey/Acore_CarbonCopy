@@ -157,6 +157,9 @@ local function CopyCharacter(event, player, command)
 			cc_resetVariables()
 			return false
 		end
+		
+		-- save the source character to db to prevent recent changes from being not applied
+		player:SaveToDB()
 
         --deduct one ticket
         local Data_SQL = CharDBQuery('UPDATE `'..Config.customDbName..'`.`carboncopy` SET tickets = tickets -1 WHERE `account_id` = '..accountId..';');
