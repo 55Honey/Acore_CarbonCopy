@@ -128,7 +128,8 @@ local function CopyCharacter(event, player, command)
 			cc_cinematic = Data_SQL:GetUInt16(0)
 			if cc_cinematic == 1 then
 				player:SendBroadcastMessage("The requested character has been logged in already. Aborting.")
-			cc_cinematic = nil
+				cc_cinematic = nil
+				return false
 			end
 		else
 			print("Unhandled exception in CarbonCopy. Could not read characters.cinematic from playerGuid "..targetGUID..".")
@@ -141,7 +142,8 @@ local function CopyCharacter(event, player, command)
 			cc_online = Data_SQL:GetUInt16(0)
 			if cc_online == 1 then
 				player:SendBroadcastMessage("The requested character has been logged in already. Aborting.")
-			cc_online = nil
+				cc_online = nil
+				return false
 			end
 		else
 			print("Unhandled exception in CarbonCopy. Could not read characters.online from playerGuid "..targetGUID..".")
