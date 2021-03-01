@@ -29,7 +29,7 @@ Config.minGMRankForTickets = 3;
 -- Max number of characters per account
 Config.maxCharacters = 10;
 -- This text is added to the mail which the new character receives alongside their copied items
-Config.mailText = ", here you are your gear. Have fun with the new twink! - Sincerely, the team of ChromieCraft!"
+Config.mailText = ",\n \n here you are your gear. Have fun with the new twink!\n \n- Sincerely,\n the team of ChromieCraft!"
 
 -- The maps below specify legal locations to sue the .copycharacter command.
 -- This is used to prevent dungeon specific gear to be copied e.g. the legendaries from the Kael'thas encounter.
@@ -76,7 +76,6 @@ local function CopyCharacter(event, player, command)
         --check for target character to be on same account
         local playerGUID = tostring(player:GetGUID())
         playerGUID = tonumber(playerGUID)
-        --print("3: "..playerGUID)
 		local targetGUID
         local targetName = commandArray[2]
         local Data_SQL = CharDBQuery('SELECT `account` FROM `characters` WHERE `guid` = '..playerGUID..' LIMIT 1;');
@@ -308,10 +307,8 @@ local function CopyCharacter(event, player, command)
 		local item_id
 		repeat
 			item_guid = Data_SQL:GetUInt32(0)
-			--print("item_guid: "..item_guid)
-            local Data_SQL2 = CharDBQuery('SELECT itemEntry FROM item_instance WHERE guid = '..item_guid..' LIMIT 1;')
+			local Data_SQL2 = CharDBQuery('SELECT itemEntry FROM item_instance WHERE guid = '..item_guid..' LIMIT 1;')
 			item_id = Data_SQL2:GetUInt16(0)
-			--print("item_id: "..item_id)
 			SendMail("Copied items", "Hello "..targetName..Config.mailText, targetGUID, 0, 61, 0, 0, 0, item_id, 1)
             ItemCounter = ItemCounter + 1
         until not Data_SQL:NextRow()
