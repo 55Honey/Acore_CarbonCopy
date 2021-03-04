@@ -19,6 +19,7 @@
 
 local Config = {};
 local cc_maps = {};
+local ticket_Cost = {};
 
 -- Name of Eluna dB scheme
 Config.customDbName = 'ac_eluna';
@@ -30,6 +31,17 @@ Config.minGMRankForTickets = 3;
 Config.maxCharacters = 10;
 -- This text is added to the mail which the new character receives alongside their copied items
 Config.mailText = ",\n \n here you are your gear. Have fun with the new twink!\n \n- Sincerely,\n the team of ChromieCraft!"
+-- Whether the ticket amount withdrawn for a copy is always 1 or depends on the level
+Config.ticketCost = "level"		-- set this to "level" to adjust the price based on the playerlevel
+-- Here you can adjust the cost in tickets if Config.ticketCost is set to "level"
+ticket_Cost[19] = 1		--it costs 1 ticket to copy a character up to level 19
+ticket_Cost[29] = 2
+ticket_Cost[39] = 3
+ticket_Cost[49] = 5
+ticket_Cost[59] = 8
+ticket_Cost[69] = 12
+ticket_Cost[79] = 18
+ticket_Cost[80] = 25	--it costs 25 tickets to copy a character at level 80
 
 -- The maps below specify legal locations to sue the .copycharacter command.
 -- This is used to prevent dungeon specific gear to be copied e.g. the legendaries from the Kael'thas encounter.
@@ -51,8 +63,6 @@ table.insert(cc_maps, 571)
 CharDBQuery('CREATE DATABASE IF NOT EXISTS `'..Config.customDbName..'`;');
 CharDBQuery('CREATE TABLE IF NOT EXISTS `'..Config.customDbName..'`.`carboncopy` (`account_id` INT(11) NOT NULL, `tickets` INT(11) DEFAULT 0, `allow_copy_from_id` INT(11) DEFAULT 0, PRIMARY KEY (`account_id`) );');
 
-
-
 local function CopyCharacter(event, player, command)
     local commandArray = cc_splitString(command)
     if commandArray[1] == "carboncopy" then
@@ -62,19 +72,9 @@ local function CopyCharacter(event, player, command)
 			return false
         end
 
-        --check for available tickets
-        local accountId = player:GetAccountId()
-        local Data_SQL = CharDBQuery('SELECT `tickets` FROM `'..Config.customDbName..'`.`carboncopy` WHERE `account_id` = '..accountId..';');
-        local availableTickets = Data_SQL:GetUInt32(0)
-        Data_SQL = nil
-        if availableTickets ~= nil and availableTickets <= 0 then
-            player:SendBroadcastMessage("You do not have enough Carbon Copy tickets to execute this command. Aborting.")
-			cc_resetVariables()
-            return false
-        end
-
         --check for target character to be on same account
-        local playerGUID = tostring(player:GetGUID())
+        local accountId = player:GetAccountId()
+		local playerGUID = tostring(player:GetGUID())
         playerGUID = tonumber(playerGUID)
 		local targetGUID
         local targetName = commandArray[2]
@@ -97,6 +97,39 @@ local function CopyCharacter(event, player, command)
 		end
         Data_SQL = nil
 
+        --check for available tickets
+        local Data_SQL = CharDBQuery('SELECT `tickets` FROM `'..Config.customDbName..'`.`carboncopy` WHERE `account_id` = '..accountId..';');
+        local availableTickets = Data_SQL:GetUInt32(0)
+		local requiredTickets
+        Data_SQL = nil
+		if Config.ticketCost == "single" then
+			if availableTickets ~= nil and availableTickets <= 0 then
+				player:SendBroadcastMessage("You do not have enough Carbon Copy tickets to execute this command. Aborting.")
+				cc_resetVariables()
+				return false
+			end
+			requiredTickets = 1
+		elseif Config.ticketCost == "level" then
+			local Data_SQL = CharDBQuery('SELECT `level` FROM `characters` WHERE `guid` = '..playerGUID..' LIMIT 1;');
+			local n = Data_SQL:GetUInt8(0) - 1
+			repeat
+				n = n + 1
+			until ticket_Cost[n] ~= nil
+			requiredTickets = ticket_Cost[n]
+			if availableTickets ~= nil and availableTickets <= 0 then
+				player:SendBroadcastMessage("You do not have enough Carbon Copy tickets to execute this command. Aborting.")
+				cc_resetVariables()
+				return false
+			end
+			if availableTickets < requiredTickets then
+				player:SendBroadcastMessage("You do not have enough Carbon Copy tickets to execute this command. Aborting.")
+				cc_resetVariables()
+				return false
+			end
+			Data_SQL = nil
+		else
+			print("Unhandled exception in CarbonCopy. Config.ticketCost is neither set to \"single\" nor \"level\".")
+		end	
 
         --check for target character to be same class/race
         local Data_SQL = CharDBQuery('SELECT `race`, `class` FROM `characters` WHERE `guid` = '..playerGUID..' LIMIT 1;');
@@ -160,9 +193,14 @@ local function CopyCharacter(event, player, command)
 		-- save the source character to db to prevent recent changes from being not applied
 		player:SaveToDB()
 
-        --deduct one ticket
-        local Data_SQL = CharDBQuery('UPDATE `'..Config.customDbName..'`.`carboncopy` SET tickets = tickets -1 WHERE `account_id` = '..accountId..';');
-        Data_SQL = nil
+        --deduct tickets
+		if Config.ticketCost == "single" then
+			local Data_SQL = CharDBQuery('UPDATE `'..Config.customDbName..'`.`carboncopy` SET tickets = tickets -1 WHERE `account_id` = '..accountId..';');
+			Data_SQL = nil
+		elseif Config.ticketCost == "level" then
+			local Data_SQL = CharDBQuery('UPDATE `'..Config.customDbName..'`.`carboncopy` SET tickets = tickets -'..requiredTickets..' WHERE `account_id` = '..accountId..';');
+			Data_SQL = nil
+		end
 		
 		--delete TempTables
 		CharDBQuery('DROP TABLE IF EXISTS tempQuest;')
@@ -229,16 +267,17 @@ local function CopyCharacter(event, player, command)
 				QueryString = nil
 				Data_SQL = nil
 			end
-			
-			local Data_SQL = CharDBQuery('DELETE FROM character_queststatus WHERE guid = '..targetGUID..';')
-			local Data_SQL = CharDBQuery('CREATE TEMPORARY TABLE tempQuest LIKE character_queststatus;')
-			local Data_SQL = CharDBQuery('INSERT INTO tempQuest SELECT * FROM character_queststatus WHERE guid = '..playerGUID..';')
-			local Data_SQL = CharDBQuery('UPDATE tempQuest SET guid = '..targetGUID..' WHERE guid = '..playerGUID..';')
-			local Data_SQL = CharDBQuery('INSERT INTO character_queststatus SELECT * FROM tempQuest;')
-			local Data_SQL = CharDBQuery('DROP TABLE tempQuest;')
-			Data_SQL = nil
 		end
 		
+		--Copy quests
+		local Data_SQL = CharDBQuery('DELETE FROM character_queststatus_rewarded WHERE guid = '..targetGUID..';')
+		local Data_SQL = CharDBQuery('CREATE TEMPORARY TABLE tempQuest LIKE character_queststatus_rewarded;')
+		local Data_SQL = CharDBQuery('INSERT INTO tempQuest SELECT * FROM character_queststatus_rewarded WHERE guid = '..playerGUID..';')
+		local Data_SQL = CharDBQuery('UPDATE tempQuest SET guid = '..targetGUID..' WHERE guid = '..playerGUID..';')
+		local Data_SQL = CharDBQuery('INSERT INTO character_queststatus_rewarded SELECT * FROM tempQuest;')
+		local Data_SQL = CharDBQuery('DROP TABLE tempQuest;')
+		Data_SQL = nil
+				
         --Copy reputation
 		local Data_SQL = CharDBQuery('DELETE FROM character_reputation WHERE guid = '..targetGUID..';')
 		local Data_SQL = CharDBQuery('CREATE TEMPORARY TABLE tempReputation LIKE character_reputation;')
@@ -314,7 +353,7 @@ local function CopyCharacter(event, player, command)
         until not Data_SQL:NextRow()
 		
         print("The player with GUID "..playerGUID.." has succesfully used the .carboncopy command. Target character: "..targetGUID);
-        player:SendBroadcastMessage("Character copied. You have "..availableTickets.." tickets left.")
+        player:SendBroadcastMessage("Character copied. You have been charged "..requiredTickets.." tickets for this action. There are "..availableTickets - requiredTickets.." tickets left.")
 		
 	elseif commandArray[1] == "addcctickets" then
 		-- make sure the player is properly ranked
