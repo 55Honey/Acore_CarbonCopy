@@ -30,9 +30,11 @@ Config.minGMRankForTickets = 3;
 -- Max number of characters per account
 Config.maxCharacters = 10;
 -- This text is added to the mail which the new character receives alongside their copied items
-Config.mailText = ",\n \n here you are your gear. Have fun with the new twink!\n \n- Sincerely,\n the team of ChromieCraft!"
--- Whether the ticket amount withdrawn for a copy is always 1 or depends on the level
-Config.ticketCost = "level"		-- set this to "level" to adjust the price based on the playerlevel
+Config.mailText = ",\n \n here you are your gear. Have fun with the new twink!\n \n- Sincerely,\n the team of ChromieCraft!";
+-- Maximum level to allow copying a character.
+Config.maxLevel = 79;
+-- Whether the ticket amount withdrawn for a copy is always 1 (set it to "single") or depends on the level (set this to "level")
+Config.ticketCost = "level";
 -- Here you can adjust the cost in tickets if Config.ticketCost is set to "level"
 ticket_Cost[19] = 1		--it costs 1 ticket to copy a character up to level 19
 ticket_Cost[29] = 2
@@ -43,7 +45,7 @@ ticket_Cost[69] = 12
 ticket_Cost[79] = 18
 ticket_Cost[80] = 25	--it costs 25 tickets to copy a character at level 80
 
--- The maps below specify legal locations to sue the .copycharacter command.
+-- The maps below specify legal locations to use the .carboncopy command.
 -- This is used to prevent dungeon specific gear to be copied e.g. the legendaries from the Kael'thas encounter.
 -- Eastern kingdoms
 table.insert(cc_maps, 0)
@@ -65,10 +67,18 @@ CharDBQuery('CREATE TABLE IF NOT EXISTS `'..Config.customDbName..'`.`carboncopy`
 
 local function CopyCharacter(event, player, command)
     local commandArray = cc_splitString(command)
-    if commandArray[1] == "carboncopy" the
+    if commandArray[1] == "carboncopy" then
         -- make sure the player is properly ranked
         if player:GetGMRank() < Config.minGMRankForCopy then
+            player:SendBroadcastMessage("You lack permisisions to execute this command.")
             cc_resetVariables()
+            return false
+        end
+
+        -- check maxLevel
+        if player:GetLevel() > Config.maxLevel then
+            player:SendBroadcastMessage("The character you want to copy from is too high level. Max level is "..Config.maxLevel..". Aborting.")
+            cc_resetVariable()
             return false
         end
 
@@ -357,40 +367,43 @@ local function CopyCharacter(event, player, command)
 
     elseif commandArray[1] == "addcctickets" then
         -- make sure the player is properly ranked
-        --    if player:GetGMRank() < Config.minGMRankForTickets then
-        --        cc_resetVariables()
-        -- 		return false
-        --    end
-        --	print(commandArray[2])
-        --	print(tostring(commandArray[2]))
-        --	print(commandArray[3])
-        --	print(tonumber(commandArray[3]))
-        --	if commandArray[2] == nil or commandArray[3] == nil then
-        --		player:SendBroadcastMessage("Expected syntax: .addcctickets [CharacterName] [Amount]")
-        --		cc_resetVariables()
-        --		return false
-        --	end
-        --
-        --	local Data_SQL = CharDBQuery('SELECT `account` FROM `characters` WHERE `name` = "'..commandArray[2]..'" LIMIT 1;');
-        --   if DataSQL ~= nil then
-        --		local accountId = Data_SQL:GetUInt32(0)
-        --	else
-        --		player:SendBroadcastMessage("Player name not found. Expected syntax: .cctickets [CharacterName] [Amount]")
-        --		return false
-        --	end
-        --	Data_SQL = nil
-        --	local Data_SQL = CharDBQuery('SELECT `tickets` FROM `'..Config.customDbName..'`.`carboncopy` WHERE `account_id`` = '..account_id..' LIMIT 1;');
-        --	if Data_SQL  ~= nil then
-        --		local oldTickets = Data_SQL:GetUInt32(0)
-        --	else
-        --		local oldTickets = 0
-        --	end
-        --	Data_SQL = nil
-        --
-        --	local Data_SQL = CharDBQuery('DELETE FROM `'..Config.customDbName..'`.`carboncopy` WHERE `account_id` = '..accountId..';');
-        --	local Data_SQL = CharDBQuery('INSERT INTO `'..Config.customDbName..'`.`carboncopy` VALUES ('..accountId..', '..commandArray[3] + oldTickets..', 0;');
-        --   Data_SQL = nil
-        --	print("GM "..player.. "has sucessfully used the .addcctickets command on the account "..accountId.." which belongs to player "..commandArray[2]..".")
+		local accountId
+		local oldTickets
+		local Data_SQL
+        if player:GetGMRank() < Config.minGMRankForTickets then
+            cc_resetVariables()
+            return false
+        end
+
+		if commandArray[2] == nil or commandArray[3] == nil then
+            player:SendBroadcastMessage("Expected syntax: .addcctickets [CharacterName] [Amount]")
+            cc_resetVariables()
+            return false
+        end
+
+        Data_SQL = CharDBQuery("SELECT `account` FROM `characters` WHERE `name` = '"..tostring(commandArray[2]).."' LIMIT 1;");
+        if Data_SQL ~= nil then
+            accountId = Data_SQL:GetUInt32(0)
+        else
+            player:SendBroadcastMessage("Player name not found. Expected syntax: .addcctickets [CharacterName] [Amount]")
+            return false
+        end
+        Data_SQL = nil
+        local Data_SQL
+		Data_SQL = CharDBQuery('SELECT `tickets` FROM `'..Config.customDbName..'`.`carboncopy` WHERE `account_id` = '..accountId..' LIMIT 1;');
+        if Data_SQL  ~= nil then
+            oldTickets = Data_SQL:GetUInt32(0)
+        else
+            oldTickets = 0
+        end
+        Data_SQL = nil
+
+        -- the `allow_copy_from_id` column is hardcoded to 0 for now
+        local Data_SQL
+        Data_SQL = CharDBQuery('DELETE FROM `'..Config.customDbName..'`.`carboncopy` WHERE `account_id` = '..accountId..';');
+        Data_SQL = CharDBQuery('INSERT INTO `'..Config.customDbName..'`.`carboncopy` VALUES ('..accountId..', '..commandArray[3] + oldTickets..', 0);');
+        Data_SQL = nil
+        print("GM "..player:GetName().. " has sucessfully used the .addcctickets command on the account "..accountId.." which belongs to player "..commandArray[2]..".")
     end
 
     cc_resetVariables()

@@ -13,10 +13,19 @@ Adjust the top part of the .lua file with the config flags.
 
 **On first startup of the core, a scheme specified in the config part of the .lua file will be created.**
 
+## Admin Usage:
+
+Set the conf flags in the top section of the .lua file.
+
 You need to grant account related tickets in its `carboncopy` table:
 - `account_id` refers to the unique guid of the account.
 - `tickets is the # of times a player can copy a character`
 - `allow_copy_from_id` is reserved for future use. 
+
+There is an ingame command available to grant tickets, by default restricted to GM-level 3+.
+
+**Most importantly: `Config.ticketCost`**  If this flag is set to "single", every copy will cost *one* ticket.
+If ticketCost is set to "level", the cost in tickets is determined by the `ticket_Cost` config flags.
 
 ## Player Usage:
 - create a new character with same class/race as the one to copy in the same account. Do NOT log it in
