@@ -109,9 +109,15 @@ local function CopyCharacter(event, player, command)
 
         --check for available tickets
         local Data_SQL = CharDBQuery('SELECT `tickets` FROM `'..Config.customDbName..'`.`carboncopy` WHERE `account_id` = '..accountId..';');
-        local availableTickets = Data_SQL:GetUInt32(0)
+        local availableTickets
         local requiredTickets
-        Data_SQL = nil
+        if Data_SQL ~= nil then
+            availableTickets = Data_SQL:GetUInt32(0)
+            Data_SQL = nil
+        else
+            availableTickets = 0
+        end
+
         if Config.ticketCost == "single" then
             if availableTickets ~= nil and availableTickets <= 0 then
                 player:SendBroadcastMessage("You do not have enough Carbon Copy tickets to execute this command. Aborting.")
@@ -450,7 +456,6 @@ local function has_value (tab, val)
     end
     return false
 end
-
 
 local PLAYER_EVENT_ON_COMMAND = 42
 -- function to be called when the command hook fires
