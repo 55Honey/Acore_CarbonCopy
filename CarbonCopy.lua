@@ -200,7 +200,7 @@ local function CopyCharacter(event, player, command)
         -- check source characters location
         local cc_mapId
         cc_mapId = player:GetMapId()
-        if not has_value(cc_maps, cc_mapId) then
+        if not cc_has_value(cc_maps, cc_mapId) then
             player:SendBroadcastMessage("You are not in an allowed map. Try again outside/not in a dungeon.")
             cc_resetVariables()
             return false
@@ -448,7 +448,7 @@ function cc_splitString(inputstr, seperator)
     return t
 end
 
-local function has_value (tab, val)
+function cc_has_value (tab, val)
     for index, value in ipairs(tab) do
         if value == val then
             return true
