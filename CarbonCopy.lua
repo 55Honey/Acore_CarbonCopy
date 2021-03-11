@@ -25,7 +25,7 @@ local ticket_Cost = {};
 Config.customDbName = 'ac_eluna';
 -- Min GM Level to use the .carboncopy command. Set to 0 for all players.
 Config.minGMRankForCopy = 2;
--- Min GM Level to add tickets to an account. (currently unused)
+-- Min GM Level to add tickets to an account.
 Config.minGMRankForTickets = 3;
 -- Max number of characters per account
 Config.maxCharacters = 10;
@@ -61,11 +61,18 @@ table.insert(cc_maps, 571)
 -- NO ADJUSTMENTS REQUIRED BELOW THIS LINE
 ------------------------------------------
 
+--Globals
+cc_scriptIsBusy = 0
+cc_oldItemGuids = {}
+cc_newItemGuids = {}
+cc_newCharacter = 0
+
 -- If module runs for the first time, create the db specified in Config.dbName and add the "carboncopy" table to it.
 CharDBQuery('CREATE DATABASE IF NOT EXISTS `'..Config.customDbName..'`;');
 CharDBQuery('CREATE TABLE IF NOT EXISTS `'..Config.customDbName..'`.`carboncopy` (`account_id` INT(11) NOT NULL, `tickets` INT(11) DEFAULT 0, `allow_copy_from_id` INT(11) DEFAULT 0, PRIMARY KEY (`account_id`) );');
 
 local function CopyCharacter(event, player, command)
+    
     local commandArray = cc_splitString(command)
     if commandArray[1] == "carboncopy" then
         -- make sure the player is properly ranked
@@ -214,9 +221,18 @@ local function CopyCharacter(event, player, command)
             cc_resetVariables()
             return false
         end
-
+        
+        if cc_scriptIsBusy ~= 0 then
+            player:SendBroadcastMessage("The server is currently busy. Please try again in a few seconds.")
+            print("CarbonCopy user request failed because the script has a scheduled task.")
+            return false
+        end
         -- save the source character to db to prevent recent changes from being not applied
         player:SaveToDB()
+        
+        --set Global variable to prevent simultaneous action
+        cc_scriptIsBusy = 1
+        cc_newCharacter = targetGUID
 
         -- deduct tickets
         if Config.ticketCost == "single" then
@@ -360,18 +376,30 @@ local function CopyCharacter(event, player, command)
         local ItemCounter = 1
         local item_guid
         local item_id
+        local newItemGuid
+        local oldItemArray = {}
+        local newItemArray = {}
         if Data_SQL ~= nil then
             repeat
                 item_guid = Data_SQL:GetUInt32(0)
                 local Data_SQL2 = CharDBQuery('SELECT itemEntry FROM item_instance WHERE guid = '..item_guid..' LIMIT 1;')
                 item_id = Data_SQL2:GetUInt16(0)
-                SendMail("Copied items", "Hello "..targetName..Config.mailText, targetGUID, 0, 61, 0, 0, 0, item_id, 1)
+                newItemGuid = SendMail("Copied items", "Hello "..targetName..Config.mailText, targetGUID, 0, 61, 0, 0, 0, item_id, 1)
+                
+                cc_scriptIsBusy = 0
+                cc_oldItemGuids[ItemCounter] = item_guid
+                cc_newItemGuids[ItemCounter] = newItemGuid
+                SaveAllPlayers()
                 ItemCounter = ItemCounter + 1
             until not Data_SQL:NextRow()
         end	
 
+        player:RegisterEvent(cc_fixItems, 3000) -- do it after 3 seconds
+
         print("The player with GUID "..playerGUID.." has succesfully used the .carboncopy command. Target character: "..targetGUID);
-        player:SendBroadcastMessage("Character copied. You have been charged "..requiredTickets.." tickets for this action. There are "..availableTickets - requiredTickets.." tickets left.")
+        player:SendBroadcastMessage("Character copied. You have been charged "..requiredTickets.." ticket(s) for this action. There are "..availableTickets - requiredTickets.." ticket()s left.")
+
+
 
         cc_deleteTempTables(playerGUID)
         cc_resetVariables()
@@ -415,12 +443,12 @@ local function CopyCharacter(event, player, command)
         end
         Data_SQL = nil
 
-        -- the `allow_copy_from_id` column is hardcoded to 0 for now
+        -- the `allow_copy_from_id` column is hardcoded to 0 for now. Only copies to the same account are possible.
         local Data_SQL
         Data_SQL = CharDBQuery('DELETE FROM `'..Config.customDbName..'`.`carboncopy` WHERE `account_id` = '..accountId..';');
         Data_SQL = CharDBQuery('INSERT INTO `'..Config.customDbName..'`.`carboncopy` VALUES ('..accountId..', '..commandArray[3] + oldTickets..', 0);');
         Data_SQL = nil
-        print("GM "..player:GetName().. " has sucessfully used the .addcctickets command on the account "..accountId.." which belongs to player "..commandArray[2]..".")
+        print("GM "..player:GetName().. " has sucessfully used the .addcctickets command, adding "..commandArray[3].." tickets to the account "..accountId.." which belongs to player "..commandArray[2]..".")
         cc_resetVariables()
         return false
     end
@@ -443,6 +471,7 @@ function cc_resetVariables()
     cc_cinematic = nil
     commandArray = nil
     availableTickets = nil
+    newItemGuid = nil
 end
 
 function cc_deleteTempTables(cc_GUID)
@@ -475,6 +504,26 @@ function cc_has_value (tab, val)
         end
     end
     return false
+end
+
+function cc_fixItems()
+    local n
+    local Data_SQL
+    for n,_ in ipairs(cc_oldItemGuids) do
+        QueryString = 'UPDATE `item_instance` AS t1 '
+        QueryString = QueryString..'INNER JOIN `item_instance` AS t2 ON t2.guid = '..cc_oldItemGuids[n]..' '
+        QueryString = QueryString..'SET t1.owner_guid = '..cc_newCharacter..', t1.creatorGuid = t2.creatorGuid, '
+        QueryString = QueryString..'t1.duration = t2.duration, t1.charges = t2.charges, t1.flags = 1, '
+        QueryString = QueryString..'t1.enchantments = t2.enchantments, t1.randomPropertyId = t2.randomPropertyId '
+        QueryString = QueryString..'WHERE t1.guid = '..cc_newItemGuids[n]..';'
+        Data_SQL = CharDBQuery(QueryString);
+    end
+
+
+    cc_newCharacter = 0
+    cc_oldItemGuids = {}
+    cc_newItemGuids = {}
+    cc_scriptIsBusy = 0
 end
 
 local PLAYER_EVENT_ON_COMMAND = 42
