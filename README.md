@@ -29,10 +29,11 @@ There is an ingame command available to grant tickets, by default restricted to 
 If ticketCost is set to "level", the cost in tickets is determined by the `ticket_Cost` config flags.
 
 ## Player Usage:
+- `.carboncopy help` shows a syntax message
 - create a new character with same class/race as the one to copy in the same account. Do NOT log it in
 - log in with the source character
 - while logged in on the character to copy, do `.carboncopy newToonsName`
-- `.carboncopy help` shows a syntax message
+- **WAIT** for a message saying "CarbonCopy has COMPLETED the duplication. You may log out now."
 
 ## What it does:
 - Delete the new characters starter gear, except the Homestone.

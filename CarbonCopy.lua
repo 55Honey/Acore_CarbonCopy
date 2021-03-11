@@ -66,6 +66,7 @@ cc_scriptIsBusy = 0
 cc_oldItemGuids = {}
 cc_newItemGuids = {}
 cc_newCharacter = 0
+cc_playerObject = 0
 
 -- If module runs for the first time, create the db specified in Config.dbName and add the "carboncopy" table to it.
 CharDBQuery('CREATE DATABASE IF NOT EXISTS `'..Config.customDbName..'`;');
@@ -269,6 +270,7 @@ local function CopyCharacter(event, player, command)
 
         -- Copy character_pet
         local playerString = player:GetClassAsString(0)
+        local cc_playerPetId
         if playerString == "Hunter" then
             local Data_SQL = CharDBQuery('SELECT id FROM character_pet WHERE owner = '..playerGUID..';');
             if Data_SQL ~= nil then
@@ -377,6 +379,7 @@ local function CopyCharacter(event, player, command)
         local item_guid
         local item_id
         local newItemGuid
+        local returnedArray = {}
         local oldItemArray = {}
         local newItemArray = {}
         if Data_SQL ~= nil then
@@ -384,22 +387,20 @@ local function CopyCharacter(event, player, command)
                 item_guid = Data_SQL:GetUInt32(0)
                 local Data_SQL2 = CharDBQuery('SELECT itemEntry FROM item_instance WHERE guid = '..item_guid..' LIMIT 1;')
                 item_id = Data_SQL2:GetUInt16(0)
-                newItemGuid = SendMail("Copied items", "Hello "..targetName..Config.mailText, targetGUID, 0, 61, 0, 0, 0, item_id, 1)
-                
-                cc_scriptIsBusy = 0
+                returnedArray = SendMail("Copied items", "Hello "..targetName..Config.mailText, targetGUID, 0, 61, 0, 0, 0, item_id, 1)
+                newItemGuid = returnedArray[1]
                 cc_oldItemGuids[ItemCounter] = item_guid
                 cc_newItemGuids[ItemCounter] = newItemGuid
-                SaveAllPlayers()
                 ItemCounter = ItemCounter + 1
             until not Data_SQL:NextRow()
-        end	
-
+        end
+        SaveAllPlayers()
         player:RegisterEvent(cc_fixItems, 3000) -- do it after 3 seconds
 
-        print("The player with GUID "..playerGUID.." has succesfully used the .carboncopy command. Target character: "..targetGUID);
-        player:SendBroadcastMessage("Character copied. You have been charged "..requiredTickets.." ticket(s) for this action. There are "..availableTickets - requiredTickets.." ticket()s left.")
-
-
+        cc_playerObject = player
+        print("1) The player with GUID "..playerGUID.." has succesfully initiated the .carboncopy command. Target character: "..targetGUID);
+        player:SendBroadcastMessage("Copy started. You have been charged "..requiredTickets.." ticket(s) for this action. There are "..availableTickets - requiredTickets.." ticket()s left.")
+        player:SendBroadcastMessage("WAIT for a \"COMPLETED\" message.")
 
         cc_deleteTempTables(playerGUID)
         cc_resetVariables()
@@ -454,6 +455,29 @@ local function CopyCharacter(event, player, command)
     end
 end
 
+function cc_fixItems()
+    local n
+    local Data_SQL
+    for n,_ in ipairs(cc_oldItemGuids) do
+        QueryString = 'UPDATE `item_instance` AS t1 '
+        QueryString = QueryString..'INNER JOIN `item_instance` AS t2 ON t2.guid = '..cc_oldItemGuids[n]..' '
+        QueryString = QueryString..'SET t1.owner_guid = '..cc_newCharacter..', t1.creatorGuid = t2.creatorGuid, '
+        QueryString = QueryString..'t1.duration = t2.duration, t1.charges = t2.charges, t1.flags = 1, '
+        QueryString = QueryString..'t1.enchantments = t2.enchantments, t1.randomPropertyId = t2.randomPropertyId '
+        QueryString = QueryString..'WHERE t1.guid = '..cc_newItemGuids[n]..';'
+        Data_SQL = CharDBQuery(QueryString);
+    end
+
+    player:SendBroadcastMessage("CarbonCopy has COMPLETED the duplication. You may log out now.")
+
+    cc_newCharacter = 0
+    cc_oldItemGuids = {}
+    cc_newItemGuids = {}
+    cc_scriptIsBusy = 0
+    cc_playerObject = 0
+    print("2) Item enchants/gems copied for player with GUID "..playerGUID..". Target character: "..targetGUID);
+end
+
 function cc_resetVariables()
     playerGUID = nil
     item_guid = nil
@@ -504,26 +528,6 @@ function cc_has_value (tab, val)
         end
     end
     return false
-end
-
-function cc_fixItems()
-    local n
-    local Data_SQL
-    for n,_ in ipairs(cc_oldItemGuids) do
-        QueryString = 'UPDATE `item_instance` AS t1 '
-        QueryString = QueryString..'INNER JOIN `item_instance` AS t2 ON t2.guid = '..cc_oldItemGuids[n]..' '
-        QueryString = QueryString..'SET t1.owner_guid = '..cc_newCharacter..', t1.creatorGuid = t2.creatorGuid, '
-        QueryString = QueryString..'t1.duration = t2.duration, t1.charges = t2.charges, t1.flags = 1, '
-        QueryString = QueryString..'t1.enchantments = t2.enchantments, t1.randomPropertyId = t2.randomPropertyId '
-        QueryString = QueryString..'WHERE t1.guid = '..cc_newItemGuids[n]..';'
-        Data_SQL = CharDBQuery(QueryString);
-    end
-
-
-    cc_newCharacter = 0
-    cc_oldItemGuids = {}
-    cc_newItemGuids = {}
-    cc_scriptIsBusy = 0
 end
 
 local PLAYER_EVENT_ON_COMMAND = 42
