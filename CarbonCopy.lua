@@ -66,7 +66,6 @@ cc_scriptIsBusy = 0
 cc_oldItemGuids = {}
 cc_newItemGuids = {}
 cc_newCharacter = 0
-cc_playerObject = 0
 
 -- If module runs for the first time, create the db specified in Config.dbName and add the "carboncopy" table to it.
 CharDBQuery('CREATE DATABASE IF NOT EXISTS `'..Config.customDbName..'`;');
@@ -387,7 +386,7 @@ local function CopyCharacter(event, player, command)
                 item_guid = Data_SQL:GetUInt32(0)
                 local Data_SQL2 = CharDBQuery('SELECT itemEntry FROM item_instance WHERE guid = '..item_guid..' LIMIT 1;')
                 item_id = Data_SQL2:GetUInt16(0)
-                returnedArray = SendMail("Copied items", "Hello "..targetName..Config.mailText, targetGUID, 0, 61, 0, 0, 0, item_id, 1)
+                returnedArray[1], returnedArray[2], returnedArray[3], returnedArray[4], returnedArray[5], returnedArray[6], returnedArray[7], returnedArray[8], returnedArray[9], returnedArray[10], returnedArray[11], returnedArray[12] = SendMail("Copied items", "Hello "..targetName..Config.mailText, targetGUID, 0, 61, 0, 0, 0, item_id, 1)
                 newItemGuid = returnedArray[1]
                 cc_oldItemGuids[ItemCounter] = item_guid
                 cc_newItemGuids[ItemCounter] = newItemGuid
@@ -396,12 +395,12 @@ local function CopyCharacter(event, player, command)
         end
         SaveAllPlayers()
         player:RegisterEvent(cc_fixItems, 3000) -- do it after 3 seconds
-
-        cc_playerObject = player
         print("1) The player with GUID "..playerGUID.." has succesfully initiated the .carboncopy command. Target character: "..targetGUID);
         player:SendBroadcastMessage("Copy started. You have been charged "..requiredTickets.." ticket(s) for this action. There are "..availableTickets - requiredTickets.." ticket()s left.")
-        player:SendBroadcastMessage("WAIT for a \"COMPLETED\" message.")
-
+        player:SendBroadcastMessage("STAY logged in for one minute!")
+        player:SendBroadcastMessage("RIMANENTE connessi per un minuto!")
+        player:SendBroadcastMessage("MANTENTE conectado por un minuto!")
+        player:SendBroadcastMessage("BLEIB eingeloggt für eine Minute!")
         cc_deleteTempTables(playerGUID)
         cc_resetVariables()
         return false
@@ -450,6 +449,7 @@ local function CopyCharacter(event, player, command)
         Data_SQL = CharDBQuery('INSERT INTO `'..Config.customDbName..'`.`carboncopy` VALUES ('..accountId..', '..commandArray[3] + oldTickets..', 0);');
         Data_SQL = nil
         print("GM "..player:GetName().. " has sucessfully used the .addcctickets command, adding "..commandArray[3].." tickets to the account "..accountId.." which belongs to player "..commandArray[2]..".")
+        player:SendBroadcastMessage("GM "..player:GetName().. " has sucessfully used the .addcctickets command, adding "..commandArray[3].." tickets to the account "..accountId.." which belongs to player "..commandArray[2]..".")
         cc_resetVariables()
         return false
     end
@@ -468,14 +468,11 @@ function cc_fixItems()
         Data_SQL = CharDBQuery(QueryString);
     end
 
-    player:SendBroadcastMessage("CarbonCopy has COMPLETED the duplication. You may log out now.")
-
+    print("2) Item enchants/gems copied for new character with GUID "..cc_newCharacter);
     cc_newCharacter = 0
     cc_oldItemGuids = {}
     cc_newItemGuids = {}
     cc_scriptIsBusy = 0
-    cc_playerObject = 0
-    print("2) Item enchants/gems copied for player with GUID "..playerGUID..". Target character: "..targetGUID);
 end
 
 function cc_resetVariables()

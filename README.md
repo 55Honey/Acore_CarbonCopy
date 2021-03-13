@@ -6,9 +6,12 @@ LUA script for Azerothcore with ElunaLUA to allow players to keep copies of thei
 ## Requirements:
 
 Compile your [Azerothcore](https://github.com/azerothcore/azerothcore-wotlk) with [Eluna Lua](https://www.azerothcore.org/catalogue-details.html?id=131435473).
-The ElunaLua module itself usually doesn't require much setup/config. Just specify the subfolder where to put your lua_scripts in its .conf file.
 
-If the directory was not changed, add the .lua script to your `../bin/release/lua_scripts/` directory.
+The script requires this [Pull Request](https://github.com/ElunaLuaEngine/Eluna/pull/347) to be merged to work. Or pick [this fork.](https://github.com/55Honey/Eluna)
+
+The ElunaLua module itself doesn't require much setup/config. Just specify the subfolder where to put your lua_scripts in its .conf file.
+
+If the directory was not changed, add the .lua script to your `../lua_scripts/` directory.
 Adjust the top part of the .lua file with the config flags.
 
 **On first startup of the core, a scheme specified in the config part of the .lua file will be created.**
@@ -30,14 +33,15 @@ If ticketCost is set to "level", the cost in tickets is determined by the `ticke
 
 ## Player Usage:
 - `.carboncopy help` shows a syntax message
-- create a new character with same class/race as the one to copy in the same account. Do NOT log it in
-- log in with the source character
-- while logged in on the character to copy, do `.carboncopy newToonsName`
-- **WAIT** for a message saying "CarbonCopy has COMPLETED the duplication. You may log out now."
+- Create a new character with same class/race as the one to copy in the same account. Do NOT log it in.
+- Log in with the source character
+- While logged in on the character to copy, do `.carboncopy $newToonsName`
+- **WAIT** for a minute before you log out.
+- Log on the new character, find a mailbox. The items in the mail show no enchants/gems. This is a client side issue, nothing can be done about it from the core. Once you take the items out of the mailbox, all modifications will be visible.
 
 ## What it does:
 - Delete the new characters starter gear, except the Homestone.
-- Send copies of all items worn to the new character by mail.
+- Send copies of all items worn to the new character by mail. Including gems and enchants. 
 - Grant the new character the sources level, xp, discovered flightmasters, /played, stats, explored zones, homebind
 - Grant a copy of the pet and previously bought stable slots. It's talent points are refunded.
 - Complete all quests on the new character, which the source has completed already
