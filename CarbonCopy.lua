@@ -87,7 +87,13 @@ local function CopyCharacter(event, player, command)
             player:SendBroadcastMessage("Syntax: .carboncopy $NewCharacterName")
             cc_resetVariables()
             return false
-        end	
+        end
+        
+        if commandArray[2] == nil or commandArray[3] == nil then
+            player:SendBroadcastMessage("Expected syntax: .carboncopy $NewCharacterName")
+            cc_resetVariables()
+            return false
+        end
 
         -- check maxLevel
         if player:GetLevel() > Config.maxLevel then
@@ -420,7 +426,7 @@ local function CopyCharacter(event, player, command)
             return false
         end	
         if commandArray[2] == nil or commandArray[3] == nil then
-            player:SendBroadcastMessage("Expected syntax: .addcctickets [CharacterName] [Amount]")
+            player:SendBroadcastMessage("Expected syntax: .addcctickets $CharacterName $Amount")
             cc_resetVariables()
             return false
         end
