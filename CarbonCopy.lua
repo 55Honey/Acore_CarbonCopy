@@ -28,7 +28,7 @@ Config.minGMRankForCopy = 2;
 -- Min GM Level to add tickets to an account.
 Config.minGMRankForTickets = 3;
 -- Max number of characters per account
-Config.maxCharacters = 10;
+-- Config.maxCharacters = 10;  --NOT USED
 -- This text is added to the mail which the new character receives alongside their copied items
 Config.mailText = ",\n \n here you are your gear. Have fun with the new twink!\n \n- Sincerely,\n the team of ChromieCraft!";
 -- Maximum level to allow copying a character.
@@ -89,7 +89,7 @@ local function CopyCharacter(event, player, command)
             return false
         end
         
-        if commandArray[2] == nil or commandArray[3] == nil then
+        if commandArray[2] == nil then
             player:SendBroadcastMessage("Expected syntax: .carboncopy $NewCharacterName")
             cc_resetVariables()
             return false
