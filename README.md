@@ -1,13 +1,11 @@
 ## CarbonCopy
 LUA script for Azerothcore with ElunaLUA to allow players to keep copies of their characters at a stage, e.g. for twink pvp.
 
-**Not tested beyond a local test server**
+**Proudly hosted on [ChromieCraft](https://www.chromiecraft.com/)**
 
 ## Requirements:
 
-Compile your [Azerothcore](https://github.com/azerothcore/azerothcore-wotlk) with [Eluna Lua](https://www.azerothcore.org/catalogue-details.html?id=131435473).
-
-The script requires this [Pull Request](https://github.com/ElunaLuaEngine/Eluna/pull/347) to be merged to work. Or pick [this fork.](https://github.com/55Honey/Eluna)
+Compile your [Azerothcore](https://github.com/azerothcore/azerothcore-wotlk) with [Eluna Lua](https://www.azerothcore.org/catalogue-details.html?id=131435473), latest version, at least from March 19th, 2021.
 
 The ElunaLua module itself doesn't require much setup/config. Just specify the subfolder where to put your lua_scripts in its .conf file.
 
@@ -35,9 +33,9 @@ If ticketCost is set to "level", the cost in tickets is determined by the `ticke
 - `.carboncopy help` shows a syntax message
 - Create a new character with same class/race as the one to copy in the same account. Do NOT log it in.
 - Log in with the source character
-- While logged in on the character to copy, do `.carboncopy $newToonsName`
+- While logged in on the character to copy from, do `.carboncopy $newToonsName`
 - **WAIT** for a minute before you log out.
-- Log on the new character, find a mailbox. The items in the mail show no enchants/gems. This is a client side issue, nothing can be done about it from the core. Once you take the items out of the mailbox, all modifications will be visible.
+- Log on the new character, find a mailbox. The items in the mail show no enchants/gems. Once you take the items out of the mailbox, all modifications will be visible.
 
 ## What it does:
 - Delete the new characters starter gear, except the Homestone.
