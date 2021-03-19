@@ -47,6 +47,6 @@ If ticketCost is set to "level", the cost in tickets is determined by the `ticke
 - **Place all actions on the new characters bars. If you copy your macro data from one characters /wtf/ directory to the other, you do not need to setup macros either.**
 
 ## What it **NOT** does:
-- No items from bags/bank are copied. All starter gear is deleted except the homestone.
+- No items from bags/bank are copied. No bags are copied. All starter gear is deleted except the homestone.
 - No gold is copied. The new character will be at zero copper.
 - No achievements are copied. Achievements were made with the source characters and are reserved to them.
