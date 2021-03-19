@@ -381,23 +381,32 @@ local function CopyCharacter(event, player, command)
 
         local Data_SQL = CharDBQuery('SELECT item FROM character_inventory WHERE guid = '..playerGUID..' AND bag = 0 AND slot <= 18 LIMIT 18;')
         local ItemCounter = 1
-        local item_guid
-        local item_id
-        local newItemGuid
-        local returnedArray = {}
-        local oldItemArray = {}
-        local newItemArray = {}
+        local item_id = {}
+        local item_amount = {}
+        local i
         if Data_SQL ~= nil then
             repeat
-                item_guid = Data_SQL:GetUInt32(0)
-                local Data_SQL2 = CharDBQuery('SELECT itemEntry FROM item_instance WHERE guid = '..item_guid..' LIMIT 1;')
-                item_id = Data_SQL2:GetUInt16(0)
-                returnedArray[1], returnedArray[2], returnedArray[3], returnedArray[4], returnedArray[5], returnedArray[6], returnedArray[7], returnedArray[8], returnedArray[9], returnedArray[10], returnedArray[11], returnedArray[12] = SendMail("Copied items", "Hello "..targetName..Config.mailText, targetGUID, 0, 61, 0, 0, 0, item_id, 1)
-                newItemGuid = returnedArray[1]
-                cc_oldItemGuids[ItemCounter] = item_guid
-                cc_newItemGuids[ItemCounter] = newItemGuid
+                cc_oldItemGuids[ItemCounter] = Data_SQL:GetUInt32(0)
+                local Data_SQL2 = CharDBQuery('SELECT itemEntry FROM item_instance WHERE guid = '..cc_oldItemGuids[ItemCounter]..' LIMIT 1;')
+                item_id[ItemCounter] = Data_SQL2:GetUInt16(0)
                 ItemCounter = ItemCounter + 1
             until not Data_SQL:NextRow()
+
+            -- set amounts to 1 or nil
+            for i = 1,18,1 do
+                if item_id[i] ~= nil then
+                    item_amount[i] = 1
+                else
+                    item_amount[i] = 1
+                    item_id[i] = 38
+                end
+            end
+
+            cc_newItemGuids[1], cc_newItemGuids[2], cc_newItemGuids[3], cc_newItemGuids[4], cc_newItemGuids[5], cc_newItemGuids[6], cc_newItemGuids[7], cc_newItemGuids[8], cc_newItemGuids[9], cc_newItemGuids[10], cc_newItemGuids[11], cc_newItemGuids[12] = SendMail("Copied items", "Hello "..targetName..Config.mailText, targetGUID, 0, 61, 0, 0, 0, item_id[1], 1, item_id[2], 1, item_id[3], 1, item_id[4], 1, item_id[5], 1, item_id[6], 1, item_id[7], 1, item_id[8], 1, item_id[9], 1, item_id[10], 1, item_id[11], 1, item_id[12], 1)
+            if cc_oldItemGuids[13] ~= nil then
+                cc_newItemGuids[13], cc_newItemGuids[14], cc_newItemGuids[15], cc_newItemGuids[16], cc_newItemGuids[17], cc_newItemGuids[18] = SendMail("Copied items", "Hello "..targetName..Config.mailText, targetGUID, 0, 61, 0, 0, 0, item_id[13], 1, item_id[14], 1, item_id[15], 1, item_id[16], 1, item_id[17], 1, item_id[18], 1)
+            end
+
         end
         SaveAllPlayers()
         player:RegisterEvent(cc_fixItems, 3000) -- do it after 3 seconds
@@ -416,48 +425,89 @@ local function CopyCharacter(event, player, command)
         local accountId
         local oldTickets
         local Data_SQL
-        if player:GetGMRank() < Config.minGMRankForTickets then
-            cc_resetVariables()
-            return false
-        end
-        if commandArray[2] == "help" then
-            player:SendBroadcastMessage("Syntax: .addcctickets $CharacterName $Amount")
-            cc_resetVariables()
-            return false
-        end	
-        if commandArray[2] == nil or commandArray[3] == nil then
-            player:SendBroadcastMessage("Expected syntax: .addcctickets $CharacterName $Amount")
-            cc_resetVariables()
-            return false
-        end
+        if player ~= nil then
+            if player:GetGMRank() < Config.minGMRankForTickets then
+                cc_resetVariables()
+                return false
+            end
+            if commandArray[2] == "help" then
+                player:SendBroadcastMessage("Syntax: .addcctickets $CharacterName $Amount")
+                cc_resetVariables()
+                return false
+            end
+            if commandArray[2] == nil or commandArray[3] == nil then
+                player:SendBroadcastMessage("Expected syntax: .addcctickets $CharacterName $Amount")
+                cc_resetVariables()
+                return false
+            end
 
-        Data_SQL = CharDBQuery("SELECT `account` FROM `characters` WHERE `name` = '"..tostring(commandArray[2]).."' LIMIT 1;");
-        if Data_SQL ~= nil then
-            accountId = Data_SQL:GetUInt32(0)
+            Data_SQL = CharDBQuery("SELECT `account` FROM `characters` WHERE `name` = '"..tostring(commandArray[2]).."' LIMIT 1;");
+            if Data_SQL ~= nil then
+                accountId = Data_SQL:GetUInt32(0)
+            else
+                player:SendBroadcastMessage("Player name not found. Expected syntax: .addcctickets [CharacterName] [Amount]")
+                cc_resetVariables()
+                return false
+            end
+            Data_SQL = nil
+            local Data_SQL
+            Data_SQL = CharDBQuery('SELECT `tickets` FROM `'..Config.customDbName..'`.`carboncopy` WHERE `account_id` = '..accountId..' LIMIT 1;');
+            if Data_SQL  ~= nil then
+                oldTickets = Data_SQL:GetUInt32(0)
+            else
+                oldTickets = 0
+            end
+            Data_SQL = nil
+
+            -- the `allow_copy_from_id` column is hardcoded to 0 for now. Only copies to the same account are possible.
+            local Data_SQL
+            Data_SQL = CharDBQuery('DELETE FROM `'..Config.customDbName..'`.`carboncopy` WHERE `account_id` = '..accountId..';');
+            Data_SQL = CharDBQuery('INSERT INTO `'..Config.customDbName..'`.`carboncopy` VALUES ('..accountId..', '..commandArray[3] + oldTickets..', 0);');
+            Data_SQL = nil
+            print("GM "..player:GetName().. " has sucessfully used the .addcctickets command, adding "..commandArray[3].." tickets to the account "..accountId.." which belongs to player "..commandArray[2]..".")
+            player:SendBroadcastMessage("GM "..player:GetName().. " has sucessfully used the .addcctickets command, adding "..commandArray[3].." tickets to the account "..accountId.." which belongs to player "..commandArray[2]..".")
+            cc_resetVariables()
+            return false
         else
-            player:SendBroadcastMessage("Player name not found. Expected syntax: .addcctickets [CharacterName] [Amount]")
+            --player is nil, must be the console. no need to check gm rank and print to console only. not chat
+            if commandArray[2] == "help" then
+                print("Syntax: .addcctickets $CharacterName $Amount")
+                cc_resetVariables()
+                return false
+            end
+            if commandArray[2] == nil or commandArray[3] == nil then
+                print("Expected syntax: .addcctickets $CharacterName $Amount")
+                cc_resetVariables()
+                return false
+            end
+
+            Data_SQL = CharDBQuery("SELECT `account` FROM `characters` WHERE `name` = '"..tostring(commandArray[2]).."' LIMIT 1;");
+            if Data_SQL ~= nil then
+                accountId = Data_SQL:GetUInt32(0)
+            else
+                print("Player name not found. Expected syntax: .addcctickets [CharacterName] [Amount]")
+                cc_resetVariables()
+                return false
+            end
+            Data_SQL = nil
+            local Data_SQL
+            Data_SQL = CharDBQuery('SELECT `tickets` FROM `'..Config.customDbName..'`.`carboncopy` WHERE `account_id` = '..accountId..' LIMIT 1;');
+            if Data_SQL  ~= nil then
+                oldTickets = Data_SQL:GetUInt32(0)
+            else
+                oldTickets = 0
+            end
+            Data_SQL = nil
+
+            -- the `allow_copy_from_id` column is hardcoded to 0 for now. Only copies to the same account are possible.
+            local Data_SQL
+            Data_SQL = CharDBQuery('DELETE FROM `'..Config.customDbName..'`.`carboncopy` WHERE `account_id` = '..accountId..';');
+            Data_SQL = CharDBQuery('INSERT INTO `'..Config.customDbName..'`.`carboncopy` VALUES ('..accountId..', '..commandArray[3] + oldTickets..', 0);');
+            Data_SQL = nil
+            print("The console has sucessfully used the .addcctickets command, adding "..commandArray[3].." tickets to the account "..accountId.." which belongs to player "..commandArray[2]..".")
             cc_resetVariables()
             return false
         end
-        Data_SQL = nil
-        local Data_SQL
-        Data_SQL = CharDBQuery('SELECT `tickets` FROM `'..Config.customDbName..'`.`carboncopy` WHERE `account_id` = '..accountId..' LIMIT 1;');
-        if Data_SQL  ~= nil then
-            oldTickets = Data_SQL:GetUInt32(0)
-        else
-            oldTickets = 0
-        end
-        Data_SQL = nil
-
-        -- the `allow_copy_from_id` column is hardcoded to 0 for now. Only copies to the same account are possible.
-        local Data_SQL
-        Data_SQL = CharDBQuery('DELETE FROM `'..Config.customDbName..'`.`carboncopy` WHERE `account_id` = '..accountId..';');
-        Data_SQL = CharDBQuery('INSERT INTO `'..Config.customDbName..'`.`carboncopy` VALUES ('..accountId..', '..commandArray[3] + oldTickets..', 0);');
-        Data_SQL = nil
-        print("GM "..player:GetName().. " has sucessfully used the .addcctickets command, adding "..commandArray[3].." tickets to the account "..accountId.." which belongs to player "..commandArray[2]..".")
-        player:SendBroadcastMessage("GM "..player:GetName().. " has sucessfully used the .addcctickets command, adding "..commandArray[3].." tickets to the account "..accountId.." which belongs to player "..commandArray[2]..".")
-        cc_resetVariables()
-        return false
     end
 end
 
@@ -483,7 +533,6 @@ end
 
 function cc_resetVariables()
     playerGUID = nil
-    item_guid = nil
     Data_SQL = nil
     Data_SQL2 = nil
     ItemCounter = nil
