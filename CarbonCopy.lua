@@ -26,7 +26,7 @@ Config.customDbName = 'ac_eluna';
 -- Min GM Level to use the .carboncopy command. Set to 0 for all players.
 Config.minGMRankForCopy = 2;
 -- Min GM Level to add tickets to an account.
-Config.minGMRankForTickets = 3;
+Config.minGMRankForTickets = 2;
 -- Max number of characters per account
 -- Config.maxCharacters = 10;  --NOT USED
 -- This text is added to the mail which the new character receives alongside their copied items
@@ -72,9 +72,12 @@ CharDBQuery('CREATE DATABASE IF NOT EXISTS `'..Config.customDbName..'`;');
 CharDBQuery('CREATE TABLE IF NOT EXISTS `'..Config.customDbName..'`.`carboncopy` (`account_id` INT(11) NOT NULL, `tickets` INT(11) DEFAULT 0, `allow_copy_from_id` INT(11) DEFAULT 0, PRIMARY KEY (`account_id`) );');
 
 local function CopyCharacter(event, player, command)
-    
+
     local commandArray = cc_splitString(command)
     if commandArray[1] == "carboncopy" then
+        if player == nil then
+            print("This command con not be run from the console, but only from the character to copy.")
+        end
         -- make sure the player is properly ranked
         if player:GetGMRank() < Config.minGMRankForCopy then
             player:SendBroadcastMessage("You lack permisisions to execute this command.")
@@ -441,6 +444,12 @@ local function CopyCharacter(event, player, command)
                 return false
             end
 
+            if tonumber(commandArray[3]) > 1000 or tonumber(commandArray[3]) < 0 then
+                player:SendBroadcastMessage("Too large or negative amount chosen for .addcctickets: "..commandArray[3]..". Max allowed is +1000.")
+                cc_resetVariables()
+                return false
+            end
+
             Data_SQL = CharDBQuery("SELECT `account` FROM `characters` WHERE `name` = '"..tostring(commandArray[2]).."' LIMIT 1;");
             if Data_SQL ~= nil then
                 accountId = Data_SQL:GetUInt32(0)
@@ -458,6 +467,12 @@ local function CopyCharacter(event, player, command)
                 oldTickets = 0
             end
             Data_SQL = nil
+
+            if oldTickets >= 1000 or oldTickets < 0 then
+                player:SendBroadcastMessage("Too large total amount tickets: "..commandArray[3]..". Max allowed total is +1000. Current value: "..oldTickets)
+                cc_resetVariables()
+                return false
+            end
 
             -- the `allow_copy_from_id` column is hardcoded to 0 for now. Only copies to the same account are possible.
             local Data_SQL
@@ -481,6 +496,12 @@ local function CopyCharacter(event, player, command)
                 return false
             end
 
+            if tonumber(commandArray[3]) > 1000 or tonumber(commandArray[3]) < 0 then
+                print("Too large or negative amount chosen for .addcctickets: "..commandArray[3]..". Max allowed is +1000.")
+                cc_resetVariables()
+                return false
+            end
+
             Data_SQL = CharDBQuery("SELECT `account` FROM `characters` WHERE `name` = '"..tostring(commandArray[2]).."' LIMIT 1;");
             if Data_SQL ~= nil then
                 accountId = Data_SQL:GetUInt32(0)
@@ -498,6 +519,12 @@ local function CopyCharacter(event, player, command)
                 oldTickets = 0
             end
             Data_SQL = nil
+
+            if oldTickets >= 1000 or oldTickets < 0 then
+                print("Too large total amount tickets: "..commandArray[3]..". Max allowed total is +1000. Current value: "..oldTickets)
+                cc_resetVariables()
+                return false
+            end
 
             -- the `allow_copy_from_id` column is hardcoded to 0 for now. Only copies to the same account are possible.
             local Data_SQL
