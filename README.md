@@ -18,13 +18,14 @@ Adjust the top part of the .lua file with the config flags.
 
 Set the conf flags in the top section of the .lua file.
 
-You need to grant account related tickets in its `carboncopy` table:
+You need to grant account related tickets in the `carboncopy` table:
 - `account_id` refers to the unique guid of the account.
 - `tickets is the # of times a player can copy a character`
 - `allow_copy_from_id` is reserved for future use. 
-- `.addcctickets help` shows a syntax message
 
-There is an ingame command available to grant tickets, by default restricted to GM-level 3+.
+Or use the command for e.g. SOAP interface to send to worldserver console, granting one ticket. Syntax: `CCNEWACCOUNT $accountName` (meant for new accounts).
+ingame command to grant tickets, by default restricted to GM-level 2+.
+Syntax: `.addcctickets $characterName $amount`. `.addcctickets help` shows a syntax message.
 
 **Most importantly: `Config.ticketCost`**  If this flag is set to "single", every copy will cost *one* ticket.
 If ticketCost is set to "level", the cost in tickets is determined by the `ticket_Cost` config flags.
