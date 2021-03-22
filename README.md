@@ -36,7 +36,7 @@ If ticketCost is set to "level", the cost in tickets is determined by the `ticke
 - Log in with the source character
 - While logged in on the character to copy from, do `.carboncopy $newToonsName`
 - **WAIT** for a minute before you log out.
-- Log on the new character, find a mailbox. The items in the mail show no enchants/gems. Once you take the items out of the mailbox, all modifications will be visible.
+- Log on the new character, find a mailbox. Possibly the items in the mail show no enchants/gems. Once you take the items out of the mailbox, all modifications will be visible. On latest AC modifications are visible in the mailbox already.
 
 ## What it does:
 - Delete the new characters starter gear, except the Homestone.
