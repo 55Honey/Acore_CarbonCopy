@@ -535,16 +535,17 @@ local function CopyCharacter(event, player, command)
             return false
         end
     -- command for SOAP interface to send to worldserver console, granting one ticket. Syntax: CCNEWACCOUNT $accountName
-    elseif commandArray[1] == "CCNEWACCOUNT" and commandArray[2] ~= nil and player = nil then
-        Data_SQL = CharDBQuery('SELECT ´id´ FROM ´account´ WHERE `username` = '..commandArray[2]..';')
-        if DATA_SQL = nil then
+    elseif commandArray[1] == "CCNEWACCOUNT" and commandArray[2] ~= nil and player == nil then
+        local Data_SQL
+        Data_SQL = AuthDBQuery('SELECT `id` FROM `account` WHERE `username` = "'..commandArray[2]..'";')
+        if Data_SQL == nil then
             print("CCNEWACCOUNT to "..commandArray[2].." has failed.")
             cc_resetVariables()
             return false
         else
             accountId = Data_SQL:GetUInt32(0)
         end
-        CharDBExecute('IF NOT EXISTS(SELECT * FROM `'..Config.customDbName..'`.`carboccopy` WHERE `account_id` = '..accountId..') BEGIN INSERT INTO `'..Config.customDbName..'`.`carboncopy` VALUES ('..accountId..', 1, 0) END;')
+        CharDBExecute('REPLACE INTO `'..Config.customDbName..'`.`carboncopy` VALUES ('..accountId..', 1, 0) ;')
         cc_resetVariables()
         return false
     end
