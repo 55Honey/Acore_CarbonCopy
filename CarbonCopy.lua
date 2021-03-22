@@ -540,6 +540,8 @@ local function CopyCharacter(event, player, command)
         Data_SQL = CharDBQuery('SELECT ´id´ FROM ´account´ WHERE `username` = '..commandArray[2]..';')
         if DATA_SQL = nil then
             print("CCNEWACCOUNT to "..commandArray[2].." has failed.")
+            cc_resetVariables()
+            return false
         else
             accountId = Data_SQL:GetUInt32(0)
         end
