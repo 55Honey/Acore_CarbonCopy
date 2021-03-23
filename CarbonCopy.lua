@@ -27,8 +27,8 @@ Config.customDbName = 'ac_eluna';
 Config.minGMRankForCopy = 2;
 -- Min GM Level to add tickets to an account.
 Config.minGMRankForTickets = 2;
--- Max number of characters per account
--- Config.maxCharacters = 10;  --NOT USED
+-- The amount of free tickets to grant when .carboncopy is executed for the first time on that account
+Config.freeTickets = 1;
 -- This text is added to the mail which the new character receives alongside their copied items
 Config.mailText = ",\n \n here you are your gear. Have fun with the new twink!\n \n- Sincerely,\n the team of ChromieCraft!";
 -- Maximum level to allow copying a character.
@@ -138,7 +138,8 @@ local function CopyCharacter(event, player, command)
             availableTickets = Data_SQL:GetUInt32(0)
             Data_SQL = nil
         else
-            availableTickets = 0
+            CharDBExecute('REPLACE INTO `'..Config.customDbName..'`.`carboncopy` VALUES ('..accountId..', 1, 0) ;')
+            availableTickets = Config.freeTickets
         end
 
         if Config.ticketCost == "single" then
