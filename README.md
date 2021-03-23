@@ -51,3 +51,8 @@ If ticketCost is set to "level", the cost in tickets is determined by the `ticke
 - No items from bags/bank are copied. No bags are copied. All starter gear is deleted except the homestone.
 - No gold is copied. The new character will be at zero copper.
 - No achievements are copied. Achievements were made with the source characters and are reserved to them.
+
+Example query to add one free ticket to all existing accounts:
+
+`REPLACE INTO ac_eluna.carboncopy(account_id) SELECT id FROM acore_auth.account;`
+`UPDATE  ac_eluna.carboncopy SET tickets = 1;`
