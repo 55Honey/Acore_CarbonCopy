@@ -411,7 +411,7 @@ local function CopyCharacter(event, player, command)
             end
 
         end
-        player:RegisterEvent(cc_fixItems, 3000) -- do it after 3 seconds
+        CreateLuaEvent(cc_fixItems, 3000) -- do it after 3 seconds
         print("1) The player with GUID "..playerGUID.." has succesfully initiated the .carboncopy command. Target character: "..targetGUID);
         player:SendBroadcastMessage("Copy started. You have been charged "..requiredTickets.." ticket(s) for this action. There are "..availableTickets - requiredTickets.." ticket()s left.")
         player:SendBroadcastMessage("STAY logged in for one minute!")
