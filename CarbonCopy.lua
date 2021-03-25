@@ -91,9 +91,19 @@ local function CopyCharacter(event, player, command)
             cc_resetVariables()
             return false
         end
-        
+
+        -- print the available tickets
+        local accountId = player:GetAccountId()
         if commandArray[2] == nil then
-            player:SendBroadcastMessage("Expected syntax: .carboncopy $NewCharacterName")
+            local Data_SQL
+            Data_SQL = CharDBQuery('SELECT `tickets` FROM `'..Config.customDbName..'`.`carboncopy` WHERE `account_id` = '..accountId..' LIMIT 1;');
+            if Data_SQL  ~= nil then
+                oldTickets = Data_SQL:GetUInt32(0)
+            else
+                oldTickets = 1
+                CharDBExecute('REPLACE INTO `'..Config.customDbName..'`.`carboncopy` VALUES ('..accountId..', '..Config.freeTickets..', 0) ;')
+            end
+            player:SendBroadcastMessage("You currently have "..oldTickets.." tickets available for CarbonCopy.")
             cc_resetVariables()
             return false
         end
@@ -106,7 +116,6 @@ local function CopyCharacter(event, player, command)
         end
 
         --check for target character to be on same account
-        local accountId = player:GetAccountId()
         local playerGUID = tostring(player:GetGUID())
         playerGUID = tonumber(playerGUID)
         local targetGUID
@@ -138,7 +147,7 @@ local function CopyCharacter(event, player, command)
             availableTickets = Data_SQL:GetUInt32(0)
             Data_SQL = nil
         else
-            CharDBExecute('REPLACE INTO `'..Config.customDbName..'`.`carboncopy` VALUES ('..accountId..', 1, 0) ;')
+            CharDBExecute('REPLACE INTO `'..Config.customDbName..'`.`carboncopy` VALUES ('..accountId..', '..Config.freeTickets..', 0) ;')
             availableTickets = Config.freeTickets
         end
 

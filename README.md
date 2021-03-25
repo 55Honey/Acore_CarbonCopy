@@ -32,6 +32,8 @@ If ticketCost is set to "level", the cost in tickets is determined by the `ticke
 
 ## Player Usage:
 - `.carboncopy help` shows a syntax message
+- `.carboncopy` shows the amount of available tickets
+
 - Create a new character with same class/race as the one to copy in the same account. Do NOT log it in.
 - Log in with the source character
 - While logged in on the character to copy from, do `.carboncopy $newToonsName`
