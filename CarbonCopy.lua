@@ -24,7 +24,7 @@ local ticket_Cost = {};
 -- Name of Eluna dB scheme
 Config.customDbName = 'ac_eluna';
 -- Min GM Level to use the .carboncopy command. Set to 0 for all players.
-Config.minGMRankForCopy = 2;
+Config.minGMRankForCopy = 0;
 -- Min GM Level to add tickets to an account.
 Config.minGMRankForTickets = 2;
 -- The amount of free tickets to grant when .carboncopy is executed for the first time on that account
@@ -32,7 +32,7 @@ Config.freeTickets = 1;
 -- This text is added to the mail which the new character receives alongside their copied items
 Config.mailText = ",\n \n here you are your gear. Have fun with the new twink!\n \n- Sincerely,\n the team of ChromieCraft!";
 -- Maximum level to allow copying a character.
-Config.maxLevel = 79;
+Config.maxLevel = 19;
 -- Whether the ticket amount withdrawn for a copy is always 1 (set it to "single") or depends on the level (set this to "level")
 Config.ticketCost = "level";
 -- Here you can adjust the cost in tickets if Config.ticketCost is set to "level"
