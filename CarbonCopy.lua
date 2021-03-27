@@ -544,18 +544,38 @@ local function CopyCharacter(event, player, command)
             cc_resetVariables()
             return false
         end
-    -- command for SOAP interface to send to worldserver console, granting one ticket. Syntax: CCNEWACCOUNT $accountName
-    elseif commandArray[1] == "CCNEWACCOUNT" and commandArray[2] ~= nil and player == nil then
+    -- command for SOAP interface to send to worldserver console, granting tickets. Syntax: CCACCOUNTTICKETS $accountName $amount
+    elseif commandArray[1] == "CCACCOUNTTICKETS" and commandArray[2] ~= nil and commandArray[3] ~= nil and player == nil then
         local Data_SQL
         Data_SQL = AuthDBQuery('SELECT `id` FROM `account` WHERE `username` = "'..commandArray[2]..'";')
         if Data_SQL == nil then
-            print("CCNEWACCOUNT to "..commandArray[2].." has failed.")
+            print("CCACCOUNTTICKETS to "..commandArray[2].." has failed.")
             cc_resetVariables()
             return false
         else
             accountId = Data_SQL:GetUInt32(0)
         end
-        CharDBExecute('REPLACE INTO `'..Config.customDbName..'`.`carboncopy` VALUES ('..accountId..', 1, 0) ;')
+
+        if tonumber(commandArray[3]) > 1000 or tonumber(commandArray[3]) < 0 then
+            print("Too large or negative amount chosen for .addcctickets: "..commandArray[3]..". Max allowed is +1000.")
+            cc_resetVariables()
+            return false
+        end
+
+        Data_SQL = CharDBQuery('SELECT `tickets` FROM `'..Config.customDbName..'`.`carboncopy` WHERE `account_id` = '..accountId..' LIMIT 1;');
+        if Data_SQL  ~= nil then
+            oldTickets = Data_SQL:GetUInt32(0)
+        else
+            oldTickets = 0
+        end
+
+        if oldTickets >= 1000 or oldTickets < 0 then
+            print("Too large total amount tickets: "..commandArray[3]..". Max allowed total is +1000. Current value: "..oldTickets)
+            cc_resetVariables()
+            return false
+        end
+
+        CharDBExecute('REPLACE INTO `'..Config.customDbName..'`.`carboncopy` VALUES ('..accountId..', '..commandArray[3] + oldTickets..', 0) ;')
         cc_resetVariables()
         return false
     end

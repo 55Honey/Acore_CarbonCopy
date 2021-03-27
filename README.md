@@ -23,7 +23,7 @@ You need to grant account related tickets in the `carboncopy` table:
 - `tickets is the # of times a player can copy a character`
 - `allow_copy_from_id` is reserved for future use. 
 
-Or use the command for e.g. SOAP interface to send to worldserver console, granting one ticket. Syntax: `CCNEWACCOUNT $accountName` (meant for new accounts).
+Or use the command for e.g. SOAP interface granting tickets when sent to worldserver console: Syntax: CCACCOUNTTICKETS $accountName $amount
 ingame command to grant tickets, by default restricted to GM-level 2+.
 Syntax: `.addcctickets $characterName $amount`. `.addcctickets help` shows a syntax message.
 
