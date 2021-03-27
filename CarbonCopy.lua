@@ -557,7 +557,7 @@ local function CopyCharacter(event, player, command)
         end
 
         if tonumber(commandArray[3]) > 1000 or tonumber(commandArray[3]) < 0 then
-            print("Too large or negative amount chosen for .addcctickets: "..commandArray[3]..". Max allowed is +1000.")
+            print("Too large or negative amount chosen for .CCACCOUNTTICKETS: "..commandArray[3]..". Max allowed is +1000.")
             cc_resetVariables()
             return false
         end
