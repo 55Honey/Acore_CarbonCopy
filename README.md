@@ -58,3 +58,5 @@ Example query to add one free ticket to all existing accounts:
 
 `REPLACE INTO ac_eluna.carboncopy(account_id) SELECT id FROM acore_auth.account;`
 `UPDATE  ac_eluna.carboncopy SET tickets = 1;`
+
+Find me on patreon: https://www.patreon.com/Honeys
