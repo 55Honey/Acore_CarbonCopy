@@ -277,6 +277,7 @@ local function CopyCharacter(event, player, command)
         local Data_SQL = CharDBQuery(QueryString);
         QueryString = nil
         Data_SQL = nil
+        CharDBExecute('UPDATE characters SET cinematic = 1 WHERE guid = '..targetGUID..';');
 
         -- Copy character_homebind
         QueryString = 'UPDATE character_homebind AS t1 INNER JOIN character_homebind AS t2 ON t2.guid = '..playerGUID..' '
@@ -286,7 +287,7 @@ local function CopyCharacter(event, player, command)
         QueryString = nil
         Data_SQL = nil
 
-        -- Copy character_pet
+        -- Copy character_pet and totems
         local playerString = player:GetClassAsString(0)
         local cc_playerPetId
         if playerString == "Hunter" then
@@ -319,6 +320,53 @@ local function CopyCharacter(event, player, command)
                 QueryString = nil
                 Data_SQL = nil
             end
+        elseif playerString == "Shaman" then
+            local totemItem = {}
+            totemItem[1] = 38
+            totemItem[2] = 38
+            totemItem[3] = 38
+            totemItem[4] = 38
+            local totemsDone = 0
+            local Data_SQL
+            Data_SQL = CharDBQuery('SELECT itemEntry FROM item_instance WHERE owner_guid = '..playerGUID..' AND itemEntry = 5178 LIMIT 1;')
+            if Data_SQL ~= nil then
+                if Data_SQL:GetUInt16(0) == 5178 then
+                    totemItem[4] = 5178
+                end
+            end
+            Data_SQL = nil
+
+            local Data_SQL
+            Data_SQL = CharDBQuery('SELECT itemEntry FROM item_instance WHERE owner_guid = '..playerGUID..' AND itemEntry = 5177 LIMIT 1;')
+            if Data_SQL ~= nil then
+                if Data_SQL:GetUInt16(0) == 5177 then
+                    totemItem[3] = 5177
+                end
+            end
+            Data_SQL = nil
+
+            local Data_SQL
+            Data_SQL = CharDBQuery('SELECT itemEntry FROM item_instance WHERE owner_guid = '..playerGUID..' AND itemEntry = 5176 LIMIT 1;')
+            if Data_SQL ~= nil then
+                if Data_SQL:GetUInt16(0) == 5176 then
+                    totemItem[2] = 5176
+                end
+            end
+            Data_SQL = nil
+
+            local Data_SQL
+            Data_SQL = CharDBQuery('SELECT itemEntry FROM item_instance WHERE owner_guid = '..playerGUID..' AND itemEntry = 5175 LIMIT 1;')
+            if Data_SQL ~= nil then
+                if Data_SQL:GetUInt16(0) == 5175 then
+                    totemItem[1] = 5175
+                end
+            end
+            Data_SQL = nil
+
+            SendMail("Copied items", "Hello "..targetName..Config.mailText, targetGUID, 0, 61, 0, 0, 0, totemItem[1], 1, totemItem[2], 1, totemItem[3], 1, totemItem[4], 1)
+
+            Data_SQL = nil
+            totemsDone = nil
         end
 
         --Copy quests
