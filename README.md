@@ -44,7 +44,7 @@ If ticketCost is set to "level", the cost in tickets is determined by the `ticke
 - Delete the new characters starter gear, except the Homestone.
 - Send copies of all items worn to the new character by mail. Including gems and enchants. 
 - Grant the new character the sources level, xp, discovered flightmasters, /played, stats, explored zones, homebind
-- Grant a copy of the pet and previously bought stable slots. It's talent points are refunded.
+- Grant hunters a copy of the pet and previously bought stable slots. It's talent points are refunded. Shamans get their low level totems copied if they still have them
 - Complete all quests on the new character, which the source has completed already
 - Grant the new character all gained reputation, talents, glyphs, spells and skills
 - **Place all actions on the new characters bars. If you copy your macro data from one characters /wtf/ directory to the other, you do not need to setup macros either.**
