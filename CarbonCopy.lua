@@ -120,7 +120,7 @@ local function CopyCharacter(event, player, command)
         playerGUID = tonumber(playerGUID)
         local targetGUID
         local targetName = commandArray[2]
-        local Data_SQL = CharDBQuery('SELECT `account` FROM `characters` WHERE `guid` = '..playerGUID..' LIMIT 1;');
+        local Data_SQL = CharDBQuery('SELECT `account` FROM `characters` WHERE `name` = '..targetName..' LIMIT 1;');
         local targetAccountId = Data_SQL:GetUInt32(0)
         Data_SQL = nil
         if targetAccountId ~= accountId then
