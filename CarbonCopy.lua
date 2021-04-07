@@ -74,6 +74,10 @@ CharDBQuery('CREATE TABLE IF NOT EXISTS `'..Config.customDbName..'`.`carboncopy`
 local function CopyCharacter(event, player, command)
 
     local commandArray = cc_splitString(command)
+    commandArray[2] = commandArray[2]:gsub(" ", "")
+    commandArray[2] = commandArray[2]:gsub(";", "")
+    commandArray[3] = commandArray[3]:gsub(" ", "")
+    commandArray[3] = commandArray[3]:gsub(";", "")
     if commandArray[1] == "carboncopy" then
         if player == nil then
             print("This command con not be run from the console, but only from the character to copy.")
