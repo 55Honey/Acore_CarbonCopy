@@ -1,6 +1,7 @@
-# **SQL injection warning**
+## **SQL injection warning for outdated versions**
 https://github.com/55Honey/Acore_CarbonCopy/issues/3
 
+**Update to the latest commit!**
 
 ## CarbonCopy
 LUA script for Azerothcore with ElunaLUA to allow players to keep copies of their characters at a stage, e.g. for twink pvp.
