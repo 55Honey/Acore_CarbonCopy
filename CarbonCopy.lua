@@ -71,6 +71,13 @@ CharDBQuery('CREATE DATABASE IF NOT EXISTS `'..Config.customDbName..'`;');
 CharDBQuery('CREATE TABLE IF NOT EXISTS `'..Config.customDbName..'`.`carboncopy` (`account_id` INT(11) NOT NULL, `tickets` INT(11) DEFAULT 0, `allow_copy_from_id` INT(11) DEFAULT 0, PRIMARY KEY (`account_id`) );');
 
 function cc_CopyCharacter(event, player, command)
+
+    if cc_scriptIsBusy ~= 0 then
+        player:SendBroadcastMessage("The server is currently busy. Please try again in a few seconds.")
+        print("CarbonCopy user request failed because the script has a scheduled task.")
+        return false
+    end
+
     local commandArray = cc_splitString(command)
     if commandArray[2] ~= nil then
         commandArray[2] = commandArray[2]:gsub("[';\\, ]", "")
@@ -138,8 +145,9 @@ function cc_CopyCharacter(event, player, command)
         end
 
         local Data_SQL = CharDBQuery('SELECT `guid` FROM `characters` WHERE `name` = "'..targetName..'" LIMIT 1;');
+        local newCharacter
         if Data_SQL ~= nil then
-            cc_newCharacter = Data_SQL:GetUInt32(0)
+            newCharacter = Data_SQL:GetUInt32(0)
        	else
             player:SendBroadcastMessage("Name not found. Check capitalization and spelling. Aborting.")
             cc_resetVariables()
@@ -194,7 +202,7 @@ function cc_CopyCharacter(event, player, command)
         local sourceClass = Data_SQL:GetUInt8(1)
         Data_SQL = nil
 
-        local Data_SQL = CharDBQuery('SELECT `race`, `class` FROM `characters` WHERE `guid` = '..cc_newCharacter..' LIMIT 1;');
+        local Data_SQL = CharDBQuery('SELECT `race`, `class` FROM `characters` WHERE `guid` = '..newCharacter..' LIMIT 1;');
         local targetRace = Data_SQL:GetUInt8(0)
         local targetClass = Data_SQL:GetUInt8(1)
         Data_SQL = nil
@@ -212,7 +220,7 @@ function cc_CopyCharacter(event, player, command)
 
         -- check if target character wasn't logged in
         local cc_cinematic
-        local Data_SQL = CharDBQuery('SELECT cinematic FROM characters WHERE guid = '..cc_newCharacter..';');
+        local Data_SQL = CharDBQuery('SELECT cinematic FROM characters WHERE guid = '..newCharacter..';');
         if Data_SQL ~= nil then
             cc_cinematic = Data_SQL:GetUInt16(0)
             if cc_cinematic == 1 then
@@ -222,12 +230,12 @@ function cc_CopyCharacter(event, player, command)
                 return false
             end
         else
-            print("Unhandled exception in CarbonCopy. Could not read characters.cinematic from cc_playerGUID "..cc_newCharacter..".")
+            print("Unhandled exception in CarbonCopy. Could not read characters.cinematic from cc_playerGUID "..newCharacter..".")
         end
 
         -- check if target character is logged in currently in case cinematic wasnt already written to db
         local cc_online
-        local Data_SQL = CharDBQuery('SELECT online FROM characters WHERE guid = '..cc_newCharacter..';');
+        local Data_SQL = CharDBQuery('SELECT online FROM characters WHERE guid = '..newCharacter..';');
         if Data_SQL ~= nil then
             cc_online = Data_SQL:GetUInt16(0)
             if cc_online == 1 then
@@ -237,7 +245,7 @@ function cc_CopyCharacter(event, player, command)
                 return false
             end
         else
-            print("Unhandled exception in CarbonCopy. Could not read characters.online from cc_playerGUID "..cc_newCharacter..".")
+            print("Unhandled exception in CarbonCopy. Could not read characters.online from cc_playerGUID "..newCharacter..".")
         end
 
         -- check source characters location
@@ -248,12 +256,13 @@ function cc_CopyCharacter(event, player, command)
             cc_resetVariables()
             return false
         end
+
+        -------------- COPY SCRIPT STARTS HERE ---------------------
+        --set Global variable to prevent simultaneous action and lock the target for 60 seconds
+        Ban(1, targetName, 60, "CarbonCopy", "CarbonCopy" )
+        cc_scriptIsBusy = 1
+        cc_newCharacter = newCharacter
         
-        if cc_scriptIsBusy ~= 0 then
-            player:SendBroadcastMessage("The server is currently busy. Please try again in a few seconds.")
-            print("CarbonCopy user request failed because the script has a scheduled task.")
-            return false
-        end
         -- save the source character to db to prevent recent changes from being not applied
         player:SaveToDB()
 
@@ -266,9 +275,6 @@ function cc_CopyCharacter(event, player, command)
         player:SendBroadcastMessage("MANTENTE conectado por un minuto!")
         player:SendBroadcastMessage("BLEIB eingeloggt für eine Minute!")
 
-        -------------- COPY SCRIPT STARTS HERE ---------------------
-        --set Global variable to prevent simultaneous action
-        cc_scriptIsBusy = 1
         cc_eventId = CreateLuaEvent(cc_resumeSubRoutine, 1000, 10)
 
         cc_subRoutine = coroutine.create(function ()
