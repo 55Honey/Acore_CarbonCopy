@@ -125,7 +125,7 @@ function cc_CopyCharacter(event, player, command)
             return false
         end
 
-        local cc_playerGUID = tostring(player:GetGUID())
+        cc_playerGUID = tostring(player:GetGUID())
         cc_playerGUID = tonumber(cc_playerGUID)
         local targetName = commandArray[2]
     
@@ -258,8 +258,8 @@ function cc_CopyCharacter(event, player, command)
         end
 
         -------------- COPY SCRIPT STARTS HERE ---------------------
-        --set Global variable to prevent simultaneous action and lock the target for 60 seconds
-        Ban(1, targetName, 60, "CarbonCopy", "CarbonCopy" )
+        --set Global variable to prevent simultaneous action and lock the target for 15 seconds
+        Ban(1, targetName, 15, "CarbonCopy", "CarbonCopy" )
         cc_scriptIsBusy = 1
         cc_newCharacter = newCharacter
         
@@ -318,9 +318,9 @@ function cc_CopyCharacter(event, player, command)
 
         -- Copy character_pet and totems
         if cc_playerString == "Hunter" then
-            local Data_SQL = CharDBQuery('SELECT id FROM character_pet WHERE owner = '..cc_playerGUID..';');
+            local Data_SQL = CharDBQuery('SELECT id FROM character_pet WHERE owner = '..cc_playerGUID..' LIMIT 1;');
             if Data_SQL ~= nil then
-                cc_playerPetId = Data_SQL:GetUInt32(0) + 1
+                cc_playerPetId = Data_SQL:GetUInt32(0)
                 Data_SQL = nil
 
                 local Data_SQL = CharDBQuery('SELECT MAX(id) FROM character_pet;');
@@ -329,9 +329,10 @@ function cc_CopyCharacter(event, player, command)
 
                 local Data_SQL = CharDBQuery('DELETE FROM character_pet WHERE owner = '..cc_newCharacter..';')
                 local Data_SQL = CharDBQuery('CREATE TEMPORARY TABLE tempPet'..cc_playerGUID..' LIKE character_pet;')
-                local Data_SQL = CharDBQuery('INSERT INTO tempPet'..cc_playerGUID..' SELECT * FROM character_pet WHERE owner = '..cc_playerGUID..';')
-                local Data_SQL = CharDBQuery('UPDATE tempPet'..cc_playerGUID..' SET id = '..cc_targetPetId..' WHERE owner = '..cc_playerGUID..';')
-                local Data_SQL = CharDBQuery('UPDATE tempPet'..cc_playerGUID..' SET owner = '..cc_newCharacter..' WHERE owner = '..cc_playerGUID..';')
+                local Data_SQL = CharDBQuery('INSERT INTO tempPet'..cc_playerGUID..' SELECT * FROM character_pet WHERE id = '..cc_playerPetId..';')
+                local Data_SQL = CharDBQuery('UPDATE tempPet'..cc_playerGUID..' SET id = '..cc_targetPetId..' WHERE id = '..cc_playerPetId..';')
+                local Data_SQL = CharDBQuery('UPDATE tempPet'..cc_playerGUID..' SET owner = '..cc_newCharacter..' WHERE id = '..cc_targetPetId..';')
+                local Data_SQL = CharDBQuery('UPDATE tempPet'..cc_playerGUID..' SET slot = 0 WHERE id = '..cc_targetPetId..';')
                 local Data_SQL = CharDBQuery('INSERT INTO character_pet SELECT * FROM tempPet'..cc_playerGUID..';')
                 local Data_SQL = CharDBQuery('DROP TABLE IF EXISTS tempPet'..cc_playerGUID..';')
 
@@ -672,15 +673,16 @@ function cc_fixItems()
         Data_SQL = CharDBQuery(QueryString);
     end
 
+    GetPlayerByGUID(cc_playerGUID):SendBroadcastMessage("Character copy done. You can log out now.")
     print("2) Item enchants/gems copied for new character with GUID "..cc_newCharacter);
     cc_newCharacter = 0
     cc_oldItemGuids = {}
     cc_newItemGuids = {}
     cc_scriptIsBusy = 0
+    cc_playerGUID = nil
 end
 
 function cc_resetVariables()
-    cc_playerGUID = nil
     Data_SQL = nil
     Data_SQL2 = nil
     ItemCounter = nil
