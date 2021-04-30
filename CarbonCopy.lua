@@ -32,7 +32,7 @@ Config.freeTickets = 1;
 -- This text is added to the mail which the new character receives alongside their copied items
 Config.mailText = ",\n \n here you are your gear. Have fun with the new twink!\n \n- Sincerely,\n the team of ChromieCraft!";
 -- Maximum level to allow copying a character.
-Config.maxLevel = 19;
+Config.maxLevel = 29;
 -- Whether the ticket amount withdrawn for a copy is always 1 (set it to "single") or depends on the level (set this to "level")
 Config.ticketCost = "level";
 -- Here you can adjust the cost in tickets if Config.ticketCost is set to "level"
