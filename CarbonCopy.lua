@@ -111,7 +111,7 @@ function cc_CopyCharacter(event, player, command)
             if Data_SQL  ~= nil then
                 oldTickets = Data_SQL:GetUInt32(0)
             else
-                oldTickets = 1
+                oldTickets = Config.freeTickets
                 CharDBExecute('REPLACE INTO `'..Config.customDbName..'`.`carboncopy` VALUES ('..accountId..', '..Config.freeTickets..', 0) ;')
             end
             player:SendBroadcastMessage("You currently have "..oldTickets.." tickets available for CarbonCopy.")
