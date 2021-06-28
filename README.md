@@ -4,6 +4,7 @@ LUA script for Azerothcore with ElunaLUA to allow players to keep copies of thei
 This branch delays the copy process and splits it into 10 pieces to reduce core lag.
 
 **Proudly hosted on [ChromieCraft](https://www.chromiecraft.com/)**
+#### Find me on patreon: https://www.patreon.com/Honeys
 
 ## Requirements:
 
