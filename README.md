@@ -1,4 +1,4 @@
-## CarbonCopy
+## lua-carbon-copy
 LUA script for Azerothcore with ElunaLUA to allow players to keep copies of their characters at a stage, e.g. for twink pvp.
 
 This branch delays the copy process and splits it into 10 pieces to reduce core lag.
