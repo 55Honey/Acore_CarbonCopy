@@ -72,12 +72,6 @@ CharDBQuery('CREATE TABLE IF NOT EXISTS `'..Config.customDbName..'`.`carboncopy`
 
 function cc_CopyCharacter(event, player, command)
 
-    if cc_scriptIsBusy ~= 0 then
-        player:SendBroadcastMessage("The server is currently busy. Please try again in a few seconds.")
-        print("CarbonCopy user request failed because the script has a scheduled task.")
-        return false
-    end
-
     local commandArray = cc_splitString(command)
     if commandArray[2] ~= nil then
         commandArray[2] = commandArray[2]:gsub("[';\\, ]", "")
@@ -85,6 +79,17 @@ function cc_CopyCharacter(event, player, command)
             commandArray[3] = commandArray[3]:gsub("[';\\, ]", "")
         end
     end
+
+    if commandArray[1] ~= "carboncopy" and commandArray[1] ~= "addcctickets" and commandArray[1] ~= "CCACCOUNTTICKETS" then
+        return
+    end
+
+    if cc_scriptIsBusy ~= 0 then
+        player:SendBroadcastMessage("The server is currently busy. Please try again in a few seconds.")
+        print("CarbonCopy user request failed because the script has a scheduled task.")
+        return false
+    end
+
     if commandArray[1] == "carboncopy" then
         if player == nil then
             print("This command con not be run from the console, but only from the character to copy.")
