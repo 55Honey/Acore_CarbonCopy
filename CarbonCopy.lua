@@ -70,7 +70,7 @@ cc_scriptIsBusy = 0
 CharDBQuery('CREATE DATABASE IF NOT EXISTS `'..Config.customDbName..'`;');
 CharDBQuery('CREATE TABLE IF NOT EXISTS `'..Config.customDbName..'`.`carboncopy` (`account_id` INT(11) NOT NULL, `tickets` INT(11) DEFAULT 0, `allow_copy_from_id` INT(11) DEFAULT 0, PRIMARY KEY (`account_id`) );');
 
-function cc_CopyCharacter(event, player, command)
+function cc_CopyCharacter(event, player, command, chatHandler)
 
     local commandArray = cc_splitString(command)
     if commandArray[2] ~= nil then
@@ -85,25 +85,25 @@ function cc_CopyCharacter(event, player, command)
     end
 
     if cc_scriptIsBusy ~= 0 then
-        player:SendBroadcastMessage("The server is currently busy. Please try again in a few seconds.")
-        print("CarbonCopy user request failed because the script has a scheduled task.")
+        chatHandler:SendSysMessage("The server is currently busy. Please try again in a few seconds.")
+        PrintInfo("CarbonCopy user request failed because the script has a scheduled task.")
         return false
     end
 
     if commandArray[1] == "carboncopy" then
         if player == nil then
-            print("This command con not be run from the console, but only from the character to copy.")
+            chatHandler:SendSysMessage("This command can not be run from the console, but only from the character to copy.")
         end
         -- make sure the player is properly ranked
         if player:GetGMRank() < Config.minGMRankForCopy then
-            player:SendBroadcastMessage("You lack permisisions to execute this command.")
+            chatHandler:SendSysMessage("You lack permisisions to execute this command.")
             cc_resetVariables()
             return false
         end
 
         -- provide syntax help 
         if commandArray[2] == "help" then
-            player:SendBroadcastMessage("Syntax: .carboncopy $NewCharacterName")
+            chatHandler:SendSysMessage("Syntax: .carboncopy $NewCharacterName")
             cc_resetVariables()
             return false
         end
@@ -119,13 +119,13 @@ function cc_CopyCharacter(event, player, command)
                 oldTickets = Config.freeTickets
                 CharDBExecute('REPLACE INTO `'..Config.customDbName..'`.`carboncopy` VALUES ('..accountId..', '..Config.freeTickets..', 0) ;')
             end
-            player:SendBroadcastMessage("You currently have "..oldTickets.." tickets available for CarbonCopy.")
+            chatHandler:SendSysMessage("You currently have "..oldTickets.." tickets available for CarbonCopy.")
             cc_resetVariables()
             return false
         end
         -- check maxLevel
         if player:GetLevel() > Config.maxLevel then
-            player:SendBroadcastMessage("The character you want to copy from is too high level. Max level is "..Config.maxLevel..". Aborting.")
+            chatHandler:SendSysMessage("The character you want to copy from is too high level. Max level is "..Config.maxLevel..". Aborting.")
             cc_resetVariables()
             return false
         end
@@ -137,14 +137,14 @@ function cc_CopyCharacter(event, player, command)
         --check for target character to be on same account
         local Data_SQL = CharDBQuery('SELECT `account` FROM `characters` WHERE `name` = "'..targetName..'" LIMIT 1;');
         if Data_SQL == nil then
-            player:SendBroadcastMessage("Name not found. Check capitalization and spelling. Aborting.")
+            chatHandler:SendSysMessage("Name not found. Check capitalization and spelling. Aborting.")
             cc_resetVariables()
             return false
         end
         local targetAccountId = Data_SQL:GetUInt32(0)
         Data_SQL = nil
         if targetAccountId ~= accountId then
-            player:SendBroadcastMessage("The requested character is not on the same account. Aborting.")
+            chatHandler:SendSysMessage("The requested character is not on the same account. Aborting.")
             cc_resetVariables()
             return false
         end
@@ -154,7 +154,7 @@ function cc_CopyCharacter(event, player, command)
         if Data_SQL ~= nil then
             newCharacter = Data_SQL:GetUInt32(0)
        	else
-            player:SendBroadcastMessage("Name not found. Check capitalization and spelling. Aborting.")
+            chatHandler:SendSysMessage("Name not found. Check capitalization and spelling. Aborting.")
             cc_resetVariables()
             return false
         end
@@ -174,7 +174,7 @@ function cc_CopyCharacter(event, player, command)
 
         if Config.ticketCost == "single" then
             if availableTickets ~= nil and availableTickets <= 0 then
-                player:SendBroadcastMessage("You do not have enough Carbon Copy tickets to execute this command. Aborting.")
+                chatHandler:SendSysMessage("You do not have enough Carbon Copy tickets to execute this command. Aborting.")
                 cc_resetVariables()
                 return false
             end
@@ -187,18 +187,18 @@ function cc_CopyCharacter(event, player, command)
             until ticket_Cost[n] ~= nil
             requiredTickets = ticket_Cost[n]
             if availableTickets ~= nil and availableTickets <= 0 then
-                player:SendBroadcastMessage("You do not have enough Carbon Copy tickets to execute this command. Aborting.")
+                chatHandler:SendSysMessage("You do not have enough Carbon Copy tickets to execute this command. Aborting.")
                 cc_resetVariables()
                 return false
             end
             if availableTickets < requiredTickets then
-                player:SendBroadcastMessage("You do not have enough Carbon Copy tickets to execute this command. Aborting.")
+                chatHandler:SendSysMessage("You do not have enough Carbon Copy tickets to execute this command. Aborting.")
                 cc_resetVariables()
                 return false
             end
             Data_SQL = nil
         else
-            print("Unhandled exception in CarbonCopy. Config.ticketCost is neither set to \"single\" nor \"level\".")
+            PrintError("Unhandled exception in CarbonCopy. Config.ticketCost is neither set to \"single\" nor \"level\".")
         end
 
         --check for target character to be same class/race
@@ -213,12 +213,12 @@ function cc_CopyCharacter(event, player, command)
         Data_SQL = nil
 
         if sourceRace ~= targetRace then
-            player:SendBroadcastMessage("The requested character is not the same race as this character. Aborting.")
+            chatHandler:SendSysMessage("The requested character is not the same race as this character. Aborting.")
             cc_resetVariables()
             return false
         end
         if sourceClass ~= targetClass then
-            player:SendBroadcastMessage("The requested character is not the same class as this character. Aborting.")
+            chatHandler:SendSysMessage("The requested character is not the same class as this character. Aborting.")
             cc_resetVariables()
             return false
         end
@@ -229,13 +229,13 @@ function cc_CopyCharacter(event, player, command)
         if Data_SQL ~= nil then
             cc_cinematic = Data_SQL:GetUInt16(0)
             if cc_cinematic == 1 then
-                player:SendBroadcastMessage("The requested character has been logged in already. Aborting.")
+                chatHandler:SendSysMessage("The requested character has been logged in already. Aborting.")
                 cc_cinematic = nil
                 cc_resetVariables()
                 return false
             end
         else
-            print("Unhandled exception in CarbonCopy. Could not read characters.cinematic from cc_playerGUID "..newCharacter..".")
+            PrintError("Unhandled exception in CarbonCopy. Could not read characters.cinematic from cc_playerGUID "..newCharacter..".")
         end
 
         -- check if target character is logged in currently in case cinematic wasnt already written to db
@@ -244,20 +244,20 @@ function cc_CopyCharacter(event, player, command)
         if Data_SQL ~= nil then
             cc_online = Data_SQL:GetUInt16(0)
             if cc_online == 1 then
-                player:SendBroadcastMessage("The requested character has been logged in already. Aborting.")
+                chatHandler:SendSysMessage("The requested character has been logged in already. Aborting.")
                 cc_online = nil
                 cc_resetVariables()
                 return false
             end
         else
-            print("Unhandled exception in CarbonCopy. Could not read characters.online from cc_playerGUID "..newCharacter..".")
+            PrintError("Unhandled exception in CarbonCopy. Could not read characters.online from cc_playerGUID "..newCharacter..".")
         end
 
         -- check source characters location
         local cc_mapId
         cc_mapId = player:GetMapId()
         if not cc_has_value(cc_maps, cc_mapId) then
-            player:SendBroadcastMessage("You are not in an allowed map. Try again outside/not in a dungeon.")
+            chatHandler:SendSysMessage("You are not in an allowed map. Try again outside/not in a dungeon.")
             cc_resetVariables()
             return false
         end
@@ -273,12 +273,12 @@ function cc_CopyCharacter(event, player, command)
 
         --fetch all required variables before 1st yield
         cc_playerString = player:GetClassAsString(0)
-        print("1) The player with GUID "..cc_playerGUID.." has succesfully initiated the .carboncopy command. Target character: "..cc_newCharacter);
-        player:SendBroadcastMessage("Copy started. You have been charged "..requiredTickets.." ticket(s) for this action. There are "..availableTickets - requiredTickets.." ticket()s left.")
-        player:SendBroadcastMessage("STAY logged in for one minute!")
-        player:SendBroadcastMessage("RIMANENTE connessi per un minuto!")
-        player:SendBroadcastMessage("MANTENTE conectado por un minuto!")
-        player:SendBroadcastMessage("BLEIB eingeloggt für eine Minute!")
+        PrintInfo("1) The player with GUID "..cc_playerGUID.." has succesfully initiated the .carboncopy command. Target character: "..cc_newCharacter);
+        chatHandler:SendSysMessage("Copy started. You have been charged "..requiredTickets.." ticket(s) for this action. There are "..availableTickets - requiredTickets.." ticket()s left.")
+        chatHandler:SendSysMessage("STAY logged in for one minute!")
+        chatHandler:SendSysMessage("RIMANENTE connessi per un minuto!")
+        chatHandler:SendSysMessage("MANTENTE conectado por un minuto!")
+        chatHandler:SendSysMessage("BLEIB eingeloggt für eine Minute!")
 
         cc_eventId = CreateLuaEvent(cc_resumeSubRoutine, 1000, 10)
 
@@ -525,18 +525,18 @@ function cc_CopyCharacter(event, player, command)
                 return false
             end
             if commandArray[2] == "help" then
-                player:SendBroadcastMessage("Syntax: .addcctickets $CharacterName $Amount")
+                chatHandler:SendSysMessage("Syntax: .addcctickets $CharacterName $Amount")
                 cc_resetVariables()
                 return false
             end
             if commandArray[2] == nil or commandArray[3] == nil then
-                player:SendBroadcastMessage("Expected syntax: .addcctickets $CharacterName $Amount")
+                chatHandler:SendSysMessage("Expected syntax: .addcctickets $CharacterName $Amount")
                 cc_resetVariables()
                 return false
             end
 
             if tonumber(commandArray[3]) > 1000 or tonumber(commandArray[3]) < 0 then
-                player:SendBroadcastMessage("Too large or negative amount chosen for .addcctickets: "..commandArray[3]..". Max allowed is +1000.")
+                chatHandler:SendSysMessage("Too large or negative amount chosen for .addcctickets: "..commandArray[3]..". Max allowed is +1000.")
                 cc_resetVariables()
                 return false
             end
@@ -545,7 +545,7 @@ function cc_CopyCharacter(event, player, command)
             if Data_SQL ~= nil then
                 accountId = Data_SQL:GetUInt32(0)
             else
-                player:SendBroadcastMessage("Player name not found. Expected syntax: .addcctickets [CharacterName] [Amount]")
+                chatHandler:SendSysMessage("Player name not found. Expected syntax: .addcctickets [CharacterName] [Amount]")
                 cc_resetVariables()
                 return false
             end
@@ -560,7 +560,7 @@ function cc_CopyCharacter(event, player, command)
             Data_SQL = nil
 
             if oldTickets >= 1000 or oldTickets < 0 then
-                player:SendBroadcastMessage("Too large total amount tickets: "..commandArray[3]..". Max allowed total is +1000. Current value: "..oldTickets)
+                chatHandler:SendSysMessage("Too large total amount tickets: "..commandArray[3]..". Max allowed total is +1000. Current value: "..oldTickets)
                 cc_resetVariables()
                 return false
             end
@@ -570,25 +570,24 @@ function cc_CopyCharacter(event, player, command)
             Data_SQL = CharDBQuery('DELETE FROM `'..Config.customDbName..'`.`carboncopy` WHERE `account_id` = '..accountId..';');
             Data_SQL = CharDBQuery('INSERT INTO `'..Config.customDbName..'`.`carboncopy` VALUES ('..accountId..', '..commandArray[3] + oldTickets..', 0);');
             Data_SQL = nil
-            print("GM "..player:GetName().. " has sucessfully used the .addcctickets command, adding "..commandArray[3].." tickets to the account "..accountId.." which belongs to player "..commandArray[2]..".")
-            player:SendBroadcastMessage("GM "..player:GetName().. " has sucessfully used the .addcctickets command, adding "..commandArray[3].." tickets to the account "..accountId.." which belongs to player "..commandArray[2]..".")
+            chatHandler:SendSysMessage("GM "..player:GetName().. " has sucessfully used the .addcctickets command, adding "..commandArray[3].." tickets to the account "..accountId.." which belongs to player "..commandArray[2]..".")
             cc_resetVariables()
             return false
         else
             --player is nil, must be the console. no need to check gm rank and print to console only. not chat
             if commandArray[2] == "help" then
-                print("Syntax: .addcctickets $CharacterName $Amount")
+                chatHandler:SendSysMessage("Syntax: .addcctickets $CharacterName $Amount")
                 cc_resetVariables()
                 return false
             end
             if commandArray[2] == nil or commandArray[3] == nil then
-                print("Expected syntax: .addcctickets $CharacterName $Amount")
+                chatHandler:SendSysMessage("Expected syntax: .addcctickets $CharacterName $Amount")
                 cc_resetVariables()
                 return false
             end
 
             if tonumber(commandArray[3]) > 1000 or tonumber(commandArray[3]) < 0 then
-                print("Too large or negative amount chosen for .addcctickets: "..commandArray[3]..". Max allowed is +1000.")
+                chatHandler:SendSysMessage("Too large or negative amount chosen for .addcctickets: "..commandArray[3]..". Max allowed is +1000.")
                 cc_resetVariables()
                 return false
             end
@@ -597,7 +596,7 @@ function cc_CopyCharacter(event, player, command)
             if Data_SQL ~= nil then
                 accountId = Data_SQL:GetUInt32(0)
             else
-                print("Player name not found. Expected syntax: .addcctickets [CharacterName] [Amount]")
+                chatHandler:SendSysMessage("Player name not found. Expected syntax: .addcctickets [CharacterName] [Amount]")
                 cc_resetVariables()
                 return false
             end
@@ -612,7 +611,7 @@ function cc_CopyCharacter(event, player, command)
             Data_SQL = nil
 
             if oldTickets >= 1000 or oldTickets < 0 then
-                print("Too large total amount tickets: "..commandArray[3]..". Max allowed total is +1000. Current value: "..oldTickets)
+                chatHandler:SendSysMessage("Too large total amount tickets: "..commandArray[3]..". Max allowed total is +1000. Current value: "..oldTickets)
                 cc_resetVariables()
                 return false
             end
@@ -622,7 +621,7 @@ function cc_CopyCharacter(event, player, command)
             Data_SQL = CharDBQuery('DELETE FROM `'..Config.customDbName..'`.`carboncopy` WHERE `account_id` = '..accountId..';');
             Data_SQL = CharDBQuery('INSERT INTO `'..Config.customDbName..'`.`carboncopy` VALUES ('..accountId..', '..commandArray[3] + oldTickets..', 0);');
             Data_SQL = nil
-            print("The console has sucessfully used the .addcctickets command, adding "..commandArray[3].." tickets to the account "..accountId.." which belongs to player "..commandArray[2]..".")
+            chatHandler:SendSysMessage("The console has sucessfully used the .addcctickets command, adding "..commandArray[3].." tickets to the account "..accountId.." which belongs to player "..commandArray[2]..".")
             cc_resetVariables()
             return false
         end
@@ -631,7 +630,7 @@ function cc_CopyCharacter(event, player, command)
         local Data_SQL
         Data_SQL = AuthDBQuery('SELECT `id` FROM `account` WHERE `username` = "'..commandArray[2]..'";')
         if Data_SQL == nil then
-            print("CCACCOUNTTICKETS to "..commandArray[2].." has failed.")
+            PrintError("CCACCOUNTTICKETS to "..commandArray[2].." has failed.")
             cc_resetVariables()
             return false
         else
@@ -639,7 +638,7 @@ function cc_CopyCharacter(event, player, command)
         end
 
         if tonumber(commandArray[3]) > 1000 or tonumber(commandArray[3]) < 0 then
-            print("Too large or negative amount chosen for .CCACCOUNTTICKETS: "..commandArray[3]..". Max allowed is +1000.")
+            chatHandler:SendSysMessage("Too large or negative amount chosen for .CCACCOUNTTICKETS: "..commandArray[3]..". Max allowed is +1000.")
             cc_resetVariables()
             return false
         end
@@ -652,7 +651,7 @@ function cc_CopyCharacter(event, player, command)
         end
 
         if oldTickets >= 1000 or oldTickets < 0 then
-            print("Too large total amount tickets: "..commandArray[3]..". Max allowed total is +1000. Current value: "..oldTickets)
+            chatHandler:SendSysMessage("Too large total amount of tickets: "..commandArray[3]..". Max allowed total is +1000. Current value: "..oldTickets)
             cc_resetVariables()
             return false
         end
@@ -677,7 +676,7 @@ function cc_fixItems()
     end
 
     GetPlayerByGUID(cc_playerGUID):SendBroadcastMessage("Character copy done. You can log out now.")
-    print("2) Item enchants/gems copied for new character with GUID "..cc_newCharacter);
+    PrintInfo("2) Item enchants/gems copied for new character with GUID "..cc_newCharacter);
     cc_newCharacter = 0
     cc_oldItemGuids = {}
     cc_newItemGuids = {}
