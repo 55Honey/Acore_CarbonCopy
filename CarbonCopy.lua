@@ -93,6 +93,8 @@ function cc_CopyCharacter(event, player, command, chatHandler)
     if commandArray[1] == "carboncopy" then
         if player == nil then
             chatHandler:SendSysMessage("This command can not be run from the console, but only from the character to copy.")
+            chatHandler:SendSysMessage("Expected syntax: .addcctickets $CharacterName $Amount")
+            return false
         end
         -- make sure the player is properly ranked
         if player:GetGMRank() < Config.minGMRankForCopy then
@@ -132,12 +134,12 @@ function cc_CopyCharacter(event, player, command, chatHandler)
 
         cc_playerGUID = tostring(player:GetGUID())
         cc_playerGUID = tonumber(cc_playerGUID)
-        local targetName = commandArray[2]
+        local targetName = commandArray[2]:gsub("^%l", string.upper)
     
         --check for target character to be on same account
         local Data_SQL = CharDBQuery('SELECT `account` FROM `characters` WHERE `name` = "'..targetName..'" LIMIT 1;');
         if Data_SQL == nil then
-            chatHandler:SendSysMessage("Name not found. Check capitalization and spelling. Aborting.")
+            chatHandler:SendSysMessage("Name not found. Check spelling. Aborting.")
             cc_resetVariables()
             return false
         end
@@ -154,7 +156,7 @@ function cc_CopyCharacter(event, player, command, chatHandler)
         if Data_SQL ~= nil then
             newCharacter = Data_SQL:GetUInt32(0)
        	else
-            chatHandler:SendSysMessage("Name not found. Check capitalization and spelling. Aborting.")
+            chatHandler:SendSysMessage("Name not found. Check spelling. Aborting.")
             cc_resetVariables()
             return false
         end
@@ -658,6 +660,12 @@ function cc_CopyCharacter(event, player, command, chatHandler)
 
         CharDBExecute('REPLACE INTO `'..Config.customDbName..'`.`carboncopy` VALUES ('..accountId..', '..commandArray[3] + oldTickets..', 0) ;')
         cc_resetVariables()
+        return false
+    elseif player ~= nil then
+        chatHandler:SendSysMessage("'CCACCOUNTTICKETS $accountName $amount' only works against SOAP / the console.")
+        return false
+    else
+        chatHandler:SendSysMessage("Expected Syntax: CCACCOUNTTICKETS $accountName $amount")
         return false
     end
 end
